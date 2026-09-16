@@ -479,8 +479,8 @@
             </div>
             <div id="box_tipo_livreto" class="hidden" style="margin-top: 8px;">
               <select id="sel_tipo_livreto">
-                <option value="A5_fechado">A5 Fechado (2 pág/fl A4)</option>
-                <option value="A4_fechado">A4 Fechado (2 A4/fl Super A3)</option>
+                <option value="A5_fechado">A5 Fechado (Dobra no A4)</option>
+                <option value="A4_fechado">A4 Fechado (Dobra no Super A3)</option>
               </select>
             </div>
           </div>
@@ -489,8 +489,8 @@
     </div>
 
     <div>
-      <label id="lbl_qtd">Quantidade Total de Peças:</label>
-      <input type="number" id="qtd_itens" value="100" min="1" oninput="atualizarPreviewAproveitamento()">
+      <label id="lbl_qtd">Quantidade de Exemplares:</label>
+      <input type="number" id="qtd_itens" value="1" min="1" oninput="atualizarPreviewAproveitamento()">
     </div>
 
     <div style="display: flex; gap: 10px;">
@@ -664,7 +664,7 @@
 </div>
 
 <script>
-  // CONFIGURAÇÃO DO FIREBASE COM AS SUAS NOVAS CREDENCIAIS
+  // CONFIGURAÇÃO DO FIREBASE COM AS SUAS CREDENCIAIS
   const firebaseConfig = {
     apiKey: "AIzaSyD6sCVnMGvr20_I48FUz6dDlFr3uB0v3hk",
     authDomain: "atendimentospace-ee4f2.firebaseapp.com",
@@ -811,7 +811,6 @@
     sulfite_A3_Color_F:     { novo_cliente: 3.50, cliente: 3.20, balcao: 4.00 },
     sulfite_A3_Color_FV:    { novo_cliente: 3.25, cliente: 3.00, balcao: 3.80 },
 
-    // PREÇOS COUCHÊ A5
     couche_a5_115g_F:       { novo_cliente: 0.90, cliente: 0.70, balcao: 1.10 },
     couche_a5_115g_FV:      { novo_cliente: 1.30, cliente: 1.00, balcao: 1.50 },
     couche_a5_180g_F:       { novo_cliente: 1.10, cliente: 0.90, balcao: 1.30 },
@@ -819,7 +818,6 @@
     couche_a5_250g_F:       { novo_cliente: 1.30, cliente: 1.00, balcao: 1.50 },
     couche_a5_250g_FV:      { novo_cliente: 1.80, cliente: 1.40, balcao: 2.10 },
 
-    // PREÇOS COUCHÊ A4
     couche_a4_115g_F:       { novo_cliente: 1.50, cliente: 1.20, balcao: 1.80 },
     couche_a4_115g_FV:      { novo_cliente: 2.20, cliente: 1.80, balcao: 2.50 },
     couche_a4_180g_F:       { novo_cliente: 1.80, cliente: 1.50, balcao: 2.00 },
@@ -827,7 +825,6 @@
     couche_a4_250g_F:       { novo_cliente: 2.20, cliente: 1.80, balcao: 2.50 },
     couche_a4_250g_FV:      { novo_cliente: 3.00, cliente: 2.50, balcao: 3.50 },
 
-    // PREÇOS COUCHÊ SUPER A3
     couche_a3_115g_F:       { novo_cliente: 3.50, cliente: 3.00, balcao: 4.00 },
     couche_a3_115g_FV:      { novo_cliente: 5.00, cliente: 4.20, balcao: 6.00 },
     couche_a3_180g_F:       { novo_cliente: 4.00, cliente: 3.50, balcao: 4.80 },
@@ -835,7 +832,6 @@
     couche_a3_250g_F:       { novo_cliente: 5.00, cliente: 4.20, balcao: 6.00 },
     couche_a3_250g_FV:      { novo_cliente: 7.50, cliente: 6.50, balcao: 8.50 },
 
-    // PREÇOS ADESIVO
     adesivo_folha_A5:       { novo_cliente: 2.80, cliente: 2.30, balcao: 3.20 },
     adesivo_folha_A4:       { novo_cliente: 4.50, cliente: 3.80, balcao: 5.00 },
     adesivo_folha_A3:       { novo_cliente: 8.50, cliente: 7.50, balcao: 10.00 },
@@ -1291,21 +1287,44 @@
       descMaterial = `${nomesM2[item.m2_tipo]} (${item.m2_largura}cm x ${item.m2_altura}cm)`;
     }
 
-    // LÓGICA DE APOSTILA, ENCADERNAÇÃO E LIVRETO
+    // LÓGICA DE APOSTILA, ENCADERNAÇÃO E LIVRETO CORRIGIDA
     if (item.ehApostila) {
       let qtdFolhasPorUnidade = item.paginas;
       let infoLivreto = "";
+      let precoDaFolhaAplicada = precoUnitario;
 
       if (item.ehLivreto) {
+        // Divide o número de páginas por 2
         qtdFolhasPorUnidade = Math.ceil(item.paginas / 2);
+
         if (item.tipoLivreto === 'A5_fechado') {
           infoLivreto = ` [Livreto A5 Fechado - ${qtdFolhasPorUnidade} fls A4]`;
+          // Se for sulfite ou couche, garante o preço da folha A4 correspondente
+          if (item.categoria === 'sulfite') {
+            let chaveA4 = `sulfite_A4_${item.sulfite_cor}_${item.face}`;
+            precoDaFolhaAplicada = TABELA_PRECOS[chaveA4]?.[perfilAtual] || precoUnitario;
+          } else if (item.categoria.startsWith('couche')) {
+            let gram = item.couche_a4_gram || item.couche_a5_gram || item.couche_a3_gram || '115g';
+            let chaveA4 = `couche_a4_${gram}_${item.face}`;
+            precoDaFolhaAplicada = TABELA_PRECOS[chaveA4]?.[perfilAtual] || precoUnitario;
+          }
         } else {
+          // A4 Fechado (Dobra no Super A3) -> 2 A4 por folha Super A3
           infoLivreto = ` [Livreto A4 Fechado - ${qtdFolhasPorUnidade} fls Super A3]`;
+          // Pega o valor da folha SUPER A3 (ou A3 sulfite)
+          if (item.categoria === 'sulfite') {
+            let chaveA3 = `sulfite_A3_${item.sulfite_cor}_${item.face}`;
+            precoDaFolhaAplicada = TABELA_PRECOS[chaveA3]?.[perfilAtual] || precoUnitario;
+          } else if (item.categoria.startsWith('couche')) {
+            let gram = item.couche_a3_gram || item.couche_a4_gram || item.couche_a5_gram || '115g';
+            let chaveA3 = `couche_a3_${gram}_${item.face}`;
+            precoDaFolhaAplicada = TABELA_PRECOS[chaveA3]?.[perfilAtual] || precoUnitario;
+          }
         }
       }
 
-      let custoImpressao = precoUnitario * qtdFolhasPorUnidade;
+      // Custo da impressão = (Páginas / 2) * Valor da folha correta
+      let custoImpressao = precoDaFolhaAplicada * qtdFolhasPorUnidade;
       let custoEncadernacao = 0;
       let nomeEncadernacao = "";
 
