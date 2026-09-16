@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -486,6 +485,17 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Bloco de Laminação -->
+    <div class="box-options">
+      <label class="checkbox-inline">
+        <input type="checkbox" id="chk_laminado" onchange="toggleLaminacao()"> Laminado?
+      </label>
+      <div id="box_campos_laminacao" class="hidden" style="margin-top: 10px;">
+        <label style="margin-top: 0;">Valor da Laminação por Lado (R$):</label>
+        <input type="number" id="valor_laminacao_por_lado" step="0.01" min="0" placeholder="0.00" value="0.00">
       </div>
     </div>
 
@@ -1140,6 +1150,16 @@
     }
   }
 
+  function toggleLaminacao() {
+    const chk = document.getElementById('chk_laminado');
+    const boxCampos = document.getElementById('box_campos_laminacao');
+    if (chk.checked) {
+      boxCampos.classList.remove('hidden');
+    } else {
+      boxCampos.classList.add('hidden');
+    }
+  }
+
   function formatarMoeda(valor) {
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
@@ -1153,6 +1173,8 @@
     const tipoEncadernacao = document.getElementById('sel_tipo_encadernacao').value;
     const ehLivreto = document.getElementById('chk_livreto').checked;
     const tipoLivreto = document.getElementById('sel_tipo_livreto').value;
+    const ehLaminado = document.getElementById('chk_laminado').checked;
+    const valorLaminacao = parseFloat(document.getElementById('valor_laminacao_por_lado').value) || 0;
 
     const item = {
       categoria: categoriaAtual,
@@ -1164,6 +1186,8 @@
       tipoEncadernacao: tipoEncadernacao,
       ehLivreto: ehLivreto,
       tipoLivreto: tipoLivreto,
+      ehLaminado: ehLaminado,
+      valorLaminacao: valorLaminacao,
       sulfite_formato: document.getElementById('sulfite_formato').value,
       sulfite_cor: document.getElementById('sulfite_cor').value,
       couche_a5_gram: document.getElementById('couche_a5_gram').value,
@@ -1187,11 +1211,17 @@
     let chavePreco = "";
     let descMaterial = "";
     let precoUnitario = 0;
+    let multiplicadorLados = (item.face === 'FV') ? 2 : 1;
 
     if (item.categoria === 'sulfite') {
       chavePreco = `sulfite_${item.sulfite_formato}_${item.sulfite_cor}_${item.face}`;
       descMaterial = `Sulfite ${item.sulfite_formato} (${item.sulfite_cor === 'PB' ? 'Preto e Branco' : 'Colorido'}, ${faceTxt})`;
       precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+
+      if (item.ehLaminado) {
+        precoUnitario += (item.valorLaminacao * multiplicadorLados);
+        descMaterial += ` + Laminação`;
+      }
 
     } else if (item.categoria === 'personalizado') {
       if (item.pers_folha_base === 'vinil_m2') {
@@ -1202,9 +1232,13 @@
         precoUnitario = subtotalCalculado / item.qtd;
 
         descMaterial = `Adesivo Vinil (${item.pers_largura}x${item.pers_altura}cm)`;
+        if (item.ehLaminado) {
+          precoUnitario += (item.valorLaminacao * multiplicadorLados);
+          descMaterial += ` + Laminação`;
+        }
         item.descricao = descMaterial;
         item.precoUnitario = precoUnitario;
-        item.subtotal = subtotalCalculado;
+        item.subtotal = precoUnitario * item.qtd;
         return item;
       }
 
@@ -1234,11 +1268,15 @@
         precoFolha = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
       }
 
+      if (item.ehLaminado) {
+        precoFolha += (item.valorLaminacao * multiplicadorLados);
+      }
+
       const folhasNecessarias = Math.ceil(item.qtd / cabem);
       const subtotalCalculado = folhasNecessarias * precoFolha;
       precoUnitario = subtotalCalculado / item.qtd;
 
-      descMaterial = `${nomeMat} (${item.pers_largura}x${item.pers_altura}cm)`;
+      descMaterial = `${nomeMat} (${item.pers_largura}x${item.pers_altura}cm)${item.ehLaminado ? ' + Laminação' : ''}`;
       item.descricao = descMaterial;
       item.precoUnitario = precoUnitario;
       item.subtotal = subtotalCalculado;
@@ -1249,20 +1287,40 @@
       descMaterial = `Couchê A5 ${item.couche_a5_gram} (${faceTxt})`;
       precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
 
+      if (item.ehLaminado) {
+        precoUnitario += (item.valorLaminacao * multiplicadorLados);
+        descMaterial += ` + Laminação`;
+      }
+
     } else if (item.categoria === 'couche_a4') {
       chavePreco = `couche_a4_${item.couche_a4_gram}_${item.face}`;
       descMaterial = `Couchê A4 ${item.couche_a4_gram} (${faceTxt})`;
       precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+
+      if (item.ehLaminado) {
+        precoUnitario += (item.valorLaminacao * multiplicadorLados);
+        descMaterial += ` + Laminação`;
+      }
 
     } else if (item.categoria === 'couche_a3') {
       chavePreco = `couche_a3_${item.couche_a3_gram}_${item.face}`;
       descMaterial = `Couchê Super A3 ${item.couche_a3_gram} (${faceTxt})`;
       precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
 
+      if (item.ehLaminado) {
+        precoUnitario += (item.valorLaminacao * multiplicadorLados);
+        descMaterial += ` + Laminação`;
+      }
+
     } else if (item.categoria === 'adesivo_folha') {
       chavePreco = `adesivo_folha_${item.adesivo_folha_tam}`;
       descMaterial = `Adesivo em Folha ${item.adesivo_folha_tam}`;
       precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+
+      if (item.ehLaminado) {
+        precoUnitario += item.valorLaminacao;
+        descMaterial += ` + Laminação`;
+      }
 
     } else if (item.categoria === 'm2') {
       const areaM2 = (item.m2_largura * item.m2_altura) / 10000;
@@ -1277,6 +1335,11 @@
         papel_fotografico: "Papel Fotográfico"
       };
       descMaterial = `${nomesM2[item.m2_tipo]} (${item.m2_largura}cm x ${item.m2_altura}cm)`;
+
+      if (item.ehLaminado) {
+        precoUnitario += item.valorLaminacao;
+        descMaterial += ` + Laminação`;
+      }
     }
 
     // LÓGICA DE APOSTILA, ENCADERNAÇÃO E LIVRETO
@@ -1287,10 +1350,7 @@
       let precoFolhaCalculo = precoUnitario;
 
       if (item.ehLivreto) {
-        // Quantidade física de folhas dobradas ao meio (4 páginas por folha física)
         qtdFolhasFisicas = Math.ceil(item.paginas / 4);
-        
-        // Cobrança por lado impresso: 5 folhas frente e verso = 10 lados/impressões cobradas
         qtdCobrada = qtdFolhasFisicas * 2;
 
         if (item.tipoLivreto === 'A5_fechado') {
@@ -1304,7 +1364,6 @@
             precoFolhaCalculo = TABELA_PRECOS[chaveA4]?.[perfilAtual] || precoUnitario;
           }
         } else {
-          // A4 Fechado -> Dobra no Super A3
           infoLivreto = ` [Livreto A4 Fechado - ${qtdFolhasFisicas} fls Super A3 FV (${qtdCobrada} impressões)]`;
           if (item.categoria === 'sulfite') {
             let chaveA3 = `sulfite_A3_${item.sulfite_cor}_F`;
@@ -1314,6 +1373,10 @@
             let chaveA3 = `couche_a3_${gram}_F`;
             precoFolhaCalculo = TABELA_PRECOS[chaveA3]?.[perfilAtual] || precoUnitario;
           }
+        }
+
+        if (item.ehLaminado) {
+          precoFolhaCalculo += item.valorLaminacao;
         }
       }
 
@@ -1454,9 +1517,14 @@
     if (it.tipoLivreto) {
       document.getElementById('sel_tipo_livreto').value = it.tipoLivreto;
     }
+
+    document.getElementById('chk_laminado').checked = it.ehLaminado || false;
+    document.getElementById('valor_laminacao_por_lado').value = it.valorLaminacao || "0.00";
+
     toggleApostila();
     toggleOpcoesEncadernacao();
     toggleOpcoesLivreto();
+    toggleLaminacao();
 
     document.getElementById('titulo-box-item').innerText = `Editando Item #${index + 1}`;
     document.getElementById('badge-modo').style.display = 'inline-block';
@@ -1804,6 +1872,10 @@ ${textoPagamento}
     const btnsDesc = document.querySelectorAll('#group-desconto .btn-toggle');
     btnsDesc.forEach((b, i) => b.classList.toggle('active', i === 0));
 
+    document.getElementById('chk_laminado').checked = false;
+    document.getElementById('valor_laminacao_por_lado').value = "0.00";
+    toggleLaminacao();
+
     atualizarTagNumero();
     cancelarEdicao();
     renderizarTabela();
@@ -2066,5 +2138,3 @@ ${textoPag}
 
 </body>
 </html>
-
-```
