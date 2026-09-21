@@ -619,7 +619,7 @@
           <th>#</th>
           <th>Material / Descrição</th>
           <th>Qtd</th>
-          <th>Unitário</th>
+          <th>Unitário (R$)</th>
           <th>Subtotal</th>
           <th style="text-align: right;">Ações</th>
         </tr>
@@ -1471,7 +1471,7 @@
     return processarCalculoItem(item);
   }
 
-  function processarCalculoItem(item) {
+  function processarCalculoItem(item, precoManual = null) {
     const faceTxt = item.face === 'FV' ? 'Frente e Verso' : 'Somente Frente';
     let chavePreco = "";
     let descMaterial = "";
@@ -1502,8 +1502,8 @@
           descMaterial += ` + Laminação`;
         }
         item.descricao = descMaterial;
-        item.precoUnitario = precoUnitario;
-        item.subtotal = precoUnitario * item.qtd;
+        item.precoUnitario = precoManual !== null ? precoManual : precoUnitario;
+        item.subtotal = item.precoUnitario * item.qtd;
         return item;
       }
 
@@ -1543,8 +1543,8 @@
 
       descMaterial = `${nomeMat} (${item.pers_largura}x${item.pers_altura}cm)${item.ehLaminado ? ' + Laminação' : ''}`;
       item.descricao = descMaterial;
-      item.precoUnitario = precoUnitario;
-      item.subtotal = subtotalCalculado;
+      item.precoUnitario = precoManual !== null ? precoManual : precoUnitario;
+      item.subtotal = item.precoUnitario * item.qtd;
       return item;
 
     } else if (item.categoria === 'couche_a5') {
@@ -1661,14 +1661,28 @@
     }
 
     item.descricao = descMaterial;
-    item.precoUnitario = precoUnitario;
-    item.subtotal = precoUnitario * item.qtd;
+    item.precoUnitario = precoManual !== null ? precoManual : precoUnitario;
+    item.subtotal = item.precoUnitario * item.qtd;
 
     return item;
   }
 
   function recalcularTodosOsItens() {
-    itensNoOrcamento = itensNoOrcamento.map(it => processarCalculoItem(it));
+    itensNoOrcamento = itensNoOrcamento.map(it => processarCalculoItem(it, it.precoUnitario));
+  }
+
+  function alterarPrecoUnitarioManual(index, novoValor) {
+    const valorNum = parseFloat(novoValor) || 0;
+    itensNoOrcamento[index].precoUnitario = valorNum;
+    itensNoOrcamento[index].subtotal = valorNum * itensNoOrcamento[index].qtd;
+    
+    // Atualiza apenas o texto do subtotal da linha específica sem redesenhar a tabela toda
+    const linhaSubtotal = document.getElementById(`subtotal_item_${index}`);
+    if (linhaSubtotal) {
+      linhaSubtotal.innerText = formatarMoeda(itensNoOrcamento[index].subtotal);
+    }
+    
+    atualizarResumo();
   }
 
   function salvarItemNoCarrinho() {
@@ -1679,6 +1693,8 @@
     }
 
     if (itemEditandoIndex !== null) {
+      item.precoUnitario = itensNoOrcamento[itemEditandoIndex].precoUnitario;
+      item.subtotal = item.precoUnitario * item.qtd;
       itensNoOrcamento[itemEditandoIndex] = item;
       cancelarEdicao();
     } else {
@@ -1704,8 +1720,10 @@
         <td><strong>${idx + 1}</strong></td>
         <td>${it.descricao}</td>
         <td>${it.qtd}</td>
-        <td>${formatarMoeda(it.precoUnitario)}</td>
-        <td><strong>${formatarMoeda(it.subtotal)}</strong></td>
+        <td>
+          <input type="number" step="0.01" value="${it.precoUnitario.toFixed(2)}" style="width: 100px; padding: 5px; font-size: 0.9rem;" oninput="alterarPrecoUnitarioManual(${idx}, this.value)">
+        </td>
+        <td><strong id="subtotal_item_${idx}">${formatarMoeda(it.subtotal)}</strong></td>
         <td class="actions">
           <button type="button" class="action-btn edit" onclick="editarItem(${idx})" title="Editar Item">✏️ Editar</button>
           <button type="button" class="action-btn clone" onclick="clonarItem(${idx})" title="Clonar Item">📋 Clonar</button>
@@ -1719,7 +1737,7 @@
   function clonarItem(index) {
     const itemOriginal = itensNoOrcamento[index];
     const copia = JSON.parse(JSON.stringify(itemOriginal));
-    itensNoOrcamento.push(processarCalculoItem(copia));
+    itensNoOrcamento.push(processarCalculoItem(copia, itemOriginal.precoUnitario));
     renderizarTabela();
     atualizarResumo();
   }
