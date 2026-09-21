@@ -88,6 +88,13 @@
       padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; margin-top: 6px; display: flex; justify-content: space-between; align-items: center;
     }
 
+    /* BANNER DE NOTA VINCULADA AO PEDIDO ATUAL */
+    .banner-nota-vinculada {
+      background: #f0fdf4; border: 1px solid #86efac; color: #166534;
+      padding: 9px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.88rem;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 
@@ -144,6 +151,7 @@
     .action-btn.del { color: #dc2626; }
     .action-btn.pay { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
     .action-btn.done { color: #047857; background: #d1fae5; border-color: #6ee7b7; font-weight: bold; }
+    .action-btn.link-btn { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
 
     .result-box {
       margin-top: 20px; background: var(--primary-light); border: 1px dashed var(--primary);
@@ -221,10 +229,43 @@
     .btn-reset-modal { background: #dc2626; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; }
 
     .search-input { width: 100%; padding: 11px 14px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: 8px; background: #ffffff; color: var(--text); }
-    .badge-num { background: #e0f2fe; color: #0369a1; padding: 3px 7px; border-radius: 5px; font-weight: bold; }
-    .badge-nota { background: #fef3c7; color: #b45309; padding: 3px 7px; border-radius: 5px; font-weight: bold; }
+    .badge-num { background: #e0f2fe; color: #0369a1; padding: 3px 7px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    .badge-nota { background: #fef3c7; color: #b45309; padding: 3px 7px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    .badge-vinculo { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
     .badge-status-pago { background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
     .badge-status-pendente { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+
+    /* ESTILOS DE AUTOCOMPLETE DE PEDIDO */
+    .dropdown-sugestoes {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      max-height: 190px;
+      overflow-y: auto;
+      z-index: 1050;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.12);
+    }
+    .item-sugestao-pedido {
+      padding: 9px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      font-size: 0.88rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s;
+    }
+    .item-sugestao-pedido:hover {
+      background: #f0fdf4;
+    }
+    .item-sugestao-pedido strong {
+      color: var(--primary);
+    }
 
     /* LAYOUT IMPRESSÃO / PDF */
     #documento-pdf-print { display: none; }
@@ -271,7 +312,7 @@
     <h2>Calculadora de Orçamentos - Impact Haus</h2>
     <div class="top-actions">
       <button type="button" class="btn-action-top" style="background:#f0fdf4; border-color:#86efac; color:#15803d;" onclick="abrirModalNovaNota()">
-        📝 Lançar Nota/Boleto
+        📝 Lançar Nota / Boleto
       </button>
       <button type="button" class="btn-action-top" onclick="abrirHistorico('pedidos')">
         📂 Histórico (<span id="count-historico">0</span>)
@@ -288,7 +329,7 @@
   <!-- PAINEL DE NOTAS PENDENTES NA TELA -->
   <div id="painel_notas_pendentes" class="painel-notas-box hidden">
     <div class="header-painel-notas">
-      <strong>📌 Notas & Boletos Pendentes de Execução / Entrega (<span id="count-notas-pendentes">0</span>)</strong>
+      <strong>📌 Notas & Serviços Pendentes de Execução / Entrega (<span id="count-notas-pendentes">0</span>)</strong>
       <button type="button" class="action-btn" onclick="abrirHistorico('notas')">Ver Todas as Notas</button>
     </div>
     <div id="lista_notas_pendentes"></div>
@@ -298,6 +339,15 @@
   <div id="painel_alertas_boletos" class="alerta-vencimento-box hidden">
     <strong>⚠️ Boletos com vencimento próximo ou pendentes:</strong>
     <div id="lista_alertas_boletos"></div>
+  </div>
+
+  <!-- BANNER DE NOTA VINCULADA AO PEDIDO ATUAL -->
+  <div id="banner_nota_vinculada" class="banner-nota-vinculada hidden">
+    <div>
+      <span>🔗 <strong>Este pedido possui nota/boleto vinculado:</strong> <span id="lbl_nota_vinculada" class="badge-nota"></span></span>
+      <span id="lbl_status_nota_vinculada" style="margin-left: 8px;"></span>
+    </div>
+    <button type="button" class="action-btn link-btn" onclick="irParaNotaVinculadaAtual()">🔍 Abrir Aba da Nota</button>
   </div>
 
   <div style="background: var(--card-inner); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
@@ -628,7 +678,7 @@
       <strong>Telefone:</strong> <span id="pdf_cli_tel">-</span>
     </div>
     <div style="text-align: right;">
-      <strong>Londrina, <span id="pdf_data_extenso">16 de Setembro de 2026</span></strong>
+      <strong>Londrina, <span id="pdf_data_extenso">21 de Setembro de 2026</span></strong>
     </div>
   </div>
 
@@ -705,6 +755,7 @@
             <th>Telefone</th>
             <th>Pagamento</th>
             <th>Total</th>
+            <th>Nota Vinculada</th>
             <th style="text-align: right;">Ações</th>
           </tr>
         </thead>
@@ -715,7 +766,7 @@
     <!-- TABELA DE NOTAS -->
     <div id="aba_conteudo_notas" class="hidden">
       <div style="margin-bottom: 10px; display:flex; justify-content: flex-end;">
-        <button type="button" class="btn-action-top" style="background: #15803d; color: white;" onclick="abrirModalNovaNota()">+ Lançar Nova Nota</button>
+        <button type="button" class="btn-action-top" style="background: #15803d; color: white;" onclick="abrirModalNovaNota()">+ Lançar Nova Nota / Boleto</button>
       </div>
       <table class="table-custom">
         <thead>
@@ -723,6 +774,7 @@
             <th>Nº Nota</th>
             <th>Data</th>
             <th>Cliente</th>
+            <th>Vínculo Pedido</th>
             <th>Descrição / Itens</th>
             <th>Valor</th>
             <th>Status</th>
@@ -735,19 +787,38 @@
   </div>
 </div>
 
-<!-- MODAL PARA CRIAR / EDITAR NOTA -->
+<!-- MODAL PARA CRIAR / EDITAR NOTA COM AUTOCOMPLETE DIGITÁVEL DE PEDIDO -->
 <div id="modalNota" class="modal-overlay hidden">
-  <div class="modal-content" style="max-width: 600px;">
+  <div class="modal-content" style="max-width: 620px;">
     <div class="modal-header">
-      <h3 id="titulo_modal_nota">📝 Lançar Nova Nota</h3>
+      <h3 id="titulo_modal_nota">📝 Lançar Nova Nota / Boleto</h3>
       <button class="close-btn" onclick="fecharModalNota()">&times;</button>
     </div>
 
     <input type="hidden" id="nota_edit_id">
 
+    <!-- CAMPO DE SELEÇÃO E VINCULAÇÃO COM BUSCA DIGITÁVEL -->
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 15px; position: relative;">
+      <label style="margin-top: 0; color: #0f766e;">🔗 Vincular a um Pedido / Orçamento existente:</label>
+      
+      <input type="hidden" id="nota_vinculo_pedido">
+      
+      <div style="display: flex; gap: 6px; align-items: center; position: relative;">
+        <input type="text" id="input_busca_pedido_vinculo" placeholder="🔍 Digite o nº do pedido, cliente ou valor para buscar..." autocomplete="off" oninput="buscarSugestoesPedidos()" onfocus="buscarSugestoesPedidos()">
+        <button type="button" id="btn_limpar_vinculo" onclick="desvincularPedidoDaNota()" style="background: #f1f5f9; border: 1px solid var(--border); color: #64748b; padding: 9px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;" title="Desvincular pedido">✕</button>
+      </div>
+
+      <!-- DROPDOWN COM SUGESTÕES -->
+      <div id="dropdown_sugestoes_pedidos" class="dropdown-sugestoes hidden"></div>
+      
+      <small id="legenda_vinculo_pedido" style="color: #64748b; font-size: 0.8rem; display: block; margin-top: 5px;">
+        💡 Digite para pesquisar. Se não escolher nenhum, a nota será salva como <strong>Avulsa</strong>.
+      </small>
+    </div>
+
     <div class="grid-2">
       <div>
-        <label>CNPJ/CPF:</label>
+        <label>Número da Nota / Boleto:</label>
         <input type="text" id="nota_numero" placeholder="Ex: NT-101">
       </div>
       <div>
@@ -787,7 +858,7 @@
 
     <div class="modal-footer">
       <button type="button" class="btn-reset-modal" onclick="fecharModalNota()">Cancelar</button>
-      <button type="button" class="btn-save-modal" onclick="salvarNota()">💾 Salvar Nota</button>
+      <button type="button" class="btn-save-modal" onclick="salvarNota()">💾 Salvar Nota / Boleto</button>
     </div>
   </div>
 </div>
@@ -1007,6 +1078,7 @@
   let itensNoOrcamento = [];
   let itemEditandoIndex = null;
   let orcamentoAtualId = null;
+  let notaVinculadaAoOrcamentoAtual = null;
 
   function sincronizarComFirebase() {
     if (!db) return;
@@ -1032,9 +1104,9 @@
       }
       atualizarContadorHistorico();
       verificarAlertasBoletos();
+      verificarNotaVinculadaDoOrcamentoAtual();
     });
 
-    // Sincronizar Notas
     db.collection('notas').orderBy('dataRaw', 'desc').get().then((querySnapshot) => {
       let listaNotas = [];
       querySnapshot.forEach((doc) => {
@@ -1045,6 +1117,7 @@
       }
       renderizarPainelNotasPendentes();
       atualizarContadoresAbas();
+      verificarNotaVinculadaDoOrcamentoAtual();
     });
   }
 
@@ -2041,6 +2114,47 @@ ${textoPagamento}${linhaObs}
       return;
     }
 
+    if (!orcamentoAtualId) {
+      const confirmar = confirm("Este orçamento ainda não foi salvo como pedido. Deseja salvar o pedido agora e gerar a nota vinculada a ele?");
+      if (!confirmar) return;
+
+      const historico = carregarHistoricoLista();
+      const nome = document.getElementById('cli_nome').value.trim() || "Cliente Balcão";
+      const tel = document.getElementById('cli_tel').value.trim() || "";
+      const observacao = document.getElementById('orc_observacao').value.trim();
+      const somaGeral = itensNoOrcamento.reduce((acc, it) => acc + it.subtotal, 0);
+      const valorDesconto = (somaGeral * descontoAtual) / 100;
+      const totalFinal = somaGeral - valorDesconto;
+      const proxNum = getProximoNumero();
+
+      const novoOrc = {
+        id: 'orc_' + Date.now(),
+        numero: formatarNumeroOrcamento(proxNum),
+        numRaw: proxNum,
+        nome,
+        tel,
+        perfil: perfilAtual,
+        formaPagamento: formaPagamentoAtual,
+        boletoVencimento: formaPagamentoAtual === 'boleto' ? document.getElementById('boleto_vencimento').value : null,
+        boletoStatus: formaPagamentoAtual === 'boleto' ? document.getElementById('boleto_status').value : null,
+        desconto: descontoAtual,
+        observacao: observacao,
+        itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
+        total: totalFinal,
+        data: new Date().toLocaleString('pt-BR')
+      };
+
+      historico.unshift(novoOrc);
+      localStorage.setItem('impact_haus_historico', JSON.stringify(historico));
+      localStorage.setItem('impact_haus_seq_num', proxNum.toString());
+      if (db) db.collection('orcamentos').doc(novoOrc.id).set(novoOrc);
+
+      orcamentoAtualId = novoOrc.id;
+      numeroOrcamentoAtual = novoOrc.numero;
+      atualizarTagNumero();
+      atualizarContadorHistorico();
+    }
+
     const nome = document.getElementById('cli_nome').value.trim() || "Cliente Balcão";
     const tel = document.getElementById('cli_tel').value.trim() || "";
     const obs = document.getElementById('orc_observacao').value.trim();
@@ -2048,6 +2162,8 @@ ${textoPagamento}${linhaObs}
     const totalFinal = somaGeral - ((somaGeral * descontoAtual) / 100);
 
     let descItens = itensNoOrcamento.map((it, i) => `${it.qtd}x ${it.descricao}`).join(' | ');
+
+    configurarVinculoPedidoPorId(orcamentoAtualId);
 
     document.getElementById('nota_edit_id').value = "";
     document.getElementById('nota_numero').value = `NT-${numeroOrcamentoAtual}`;
@@ -2057,7 +2173,7 @@ ${textoPagamento}${linhaObs}
     document.getElementById('nota_descricao').value = descItens;
     document.getElementById('nota_observacao').value = obs;
     document.getElementById('nota_status').value = 'pendente';
-    document.getElementById('titulo_modal_nota').innerText = "📝 Gerar Nota a partir do Orçamento";
+    document.getElementById('titulo_modal_nota').innerText = "📝 Gerar Nota Vinculada ao Pedido #" + numeroOrcamentoAtual;
 
     document.getElementById('modalNota').classList.remove('hidden');
   }
@@ -2070,6 +2186,9 @@ ${textoPagamento}${linhaObs}
     }
     itensNoOrcamento = [];
     orcamentoAtualId = null;
+    notaVinculadaAoOrcamentoAtual = null;
+    document.getElementById('banner_nota_vinculada').classList.add('hidden');
+
     numeroOrcamentoAtual = formatarNumeroOrcamento(getProximoNumero());
     document.getElementById('cli_nome').value = "";
     document.getElementById('cli_tel').value = "";
@@ -2094,18 +2213,129 @@ ${textoPagamento}${linhaObs}
     atualizarResumo();
   }
 
-  // GERENCIAMENTO DE NOTAS
-  function abrirModalNovaNota() {
+  // AUTOCOMPLETE DIGITÁVEL PARA SELEÇÃO DE PEDIDO
+  function buscarSugestoesPedidos() {
+    const termo = (document.getElementById('input_busca_pedido_vinculo').value || '').trim().toLowerCase();
+    const dropdown = document.getElementById('dropdown_sugestoes_pedidos');
+    const pedidos = carregarHistoricoLista();
+
+    if (pedidos.length === 0) {
+      dropdown.innerHTML = `<div style="padding:10px; color:#64748b; font-size:0.85rem; text-align:center;">Nenhum pedido salvo ainda.</div>`;
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    const filtrados = pedidos.filter(p => {
+      const numMatch = (p.numero || '').toLowerCase().includes(termo) || String(p.numRaw || '').includes(termo);
+      const nomeMatch = (p.nome || '').toLowerCase().includes(termo);
+      const telMatch = (p.tel || '').toLowerCase().includes(termo);
+      const valMatch = String(p.total || '').includes(termo);
+      return numMatch || nomeMatch || telMatch || valMatch;
+    });
+
+    if (filtrados.length === 0) {
+      dropdown.innerHTML = `<div style="padding:10px; color:#64748b; font-size:0.85rem; text-align:center;">Nenhum pedido encontrado.</div>`;
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    dropdown.innerHTML = '';
+    filtrados.forEach(p => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'item-sugestao-pedido';
+      itemDiv.innerHTML = `
+        <div>
+          <strong>#${p.numero}</strong> - ${p.nome || 'Cliente Balcão'} <small style="color:#64748b;">(${p.tel || 'Sem tel'})</small>
+        </div>
+        <div style="font-weight:bold; color:#15803d;">
+          ${formatarMoeda(p.total)}
+        </div>
+      `;
+      itemDiv.onclick = function() {
+        selecionarPedidoParaVinculoObj(p);
+      };
+      dropdown.appendChild(itemDiv);
+    });
+
+    dropdown.classList.remove('hidden');
+  }
+
+  function fecharSugestoesPedidos() {
+    setTimeout(() => {
+      const dropdown = document.getElementById('dropdown_sugestoes_pedidos');
+      if (dropdown) dropdown.classList.add('hidden');
+    }, 200);
+  }
+
+  function selecionarPedidoParaVinculoObj(p) {
+    document.getElementById('nota_vinculo_pedido').value = p.id;
+    document.getElementById('input_busca_pedido_vinculo').value = `Pedido #${p.numero} - ${p.nome || 'Balcão'} (${formatarMoeda(p.total)})`;
+    document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
+
+    const legenda = document.getElementById('legenda_vinculo_pedido');
+    legenda.innerHTML = `✅ <strong>Vinculado ao Pedido #${p.numero}</strong>. Os dados foram preenchidos automaticamente.`;
+    legenda.style.color = '#15803d';
+
+    if (!document.getElementById('nota_cliente').value) {
+      document.getElementById('nota_cliente').value = p.nome || '';
+    }
+    if (!document.getElementById('nota_telefone').value) {
+      document.getElementById('nota_telefone').value = p.tel || '';
+    }
+    if (!document.getElementById('nota_valor').value) {
+      document.getElementById('nota_valor').value = p.total ? Number(p.total).toFixed(2) : '';
+    }
+    if (!document.getElementById('nota_descricao').value && p.itens && p.itens.length > 0) {
+      document.getElementById('nota_descricao').value = p.itens.map(it => `${it.qtd}x ${it.descricao}`).join(' | ');
+    }
+    if (!document.getElementById('nota_observacao').value && p.observacao) {
+      document.getElementById('nota_observacao').value = p.observacao;
+    }
+  }
+
+  function configurarVinculoPedidoPorId(pedidoId) {
+    if (!pedidoId) {
+      desvincularPedidoDaNota();
+      return;
+    }
+
+    const pedidos = carregarHistoricoLista();
+    const p = pedidos.find(item => item.id === pedidoId);
+    if (p) {
+      selecionarPedidoParaVinculoObj(p);
+    } else {
+      desvincularPedidoDaNota();
+    }
+  }
+
+  function desvincularPedidoDaNota() {
+    document.getElementById('nota_vinculo_pedido').value = "";
+    document.getElementById('input_busca_pedido_vinculo').value = "";
+    const legenda = document.getElementById('legenda_vinculo_pedido');
+    legenda.innerHTML = `💡 Digite para pesquisar. Se não escolher nenhum, a nota será salva como <strong>Avulsa</strong>.`;
+    legenda.style.color = '#64748b';
+    document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
+  }
+
+  function abrirModalNovaNota(pedidoIdPreSelecionado = null) {
     document.getElementById('nota_edit_id').value = "";
     const proximaNotaNum = "NT-" + (carregarNotasLista().length + 1).toString().padStart(3, '0');
     document.getElementById('nota_numero').value = proximaNotaNum;
+    
     document.getElementById('nota_cliente').value = document.getElementById('cli_nome').value.trim();
     document.getElementById('nota_telefone').value = document.getElementById('cli_tel').value.trim();
     document.getElementById('nota_valor').value = "";
     document.getElementById('nota_descricao').value = "";
-    document.getElementById('nota_observacao').value = "";
+    document.getElementById('nota_observacao').value = document.getElementById('orc_observacao').value.trim();
     document.getElementById('nota_status').value = "pendente";
-    document.getElementById('titulo_modal_nota').innerText = "📝 Lançar Nova Nota";
+    document.getElementById('titulo_modal_nota').innerText = "📝 Lançar Nova Nota / Boleto";
+
+    if (pedidoIdPreSelecionado || orcamentoAtualId) {
+      configurarVinculoPedidoPorId(pedidoIdPreSelecionado || orcamentoAtualId);
+    } else {
+      desvincularPedidoDaNota();
+    }
+
     document.getElementById('modalNota').classList.remove('hidden');
   }
 
@@ -2122,6 +2352,7 @@ ${textoPagamento}${linhaObs}
     const descricao = document.getElementById('nota_descricao').value.trim() || "Serviço gráfico em geral";
     const observacao = document.getElementById('nota_observacao').value.trim();
     const status = document.getElementById('nota_status').value;
+    const pedidoVinculadoId = document.getElementById('nota_vinculo_pedido').value || null;
     const dataHora = new Date().toLocaleString('pt-BR');
     const dataRaw = Date.now();
 
@@ -2139,7 +2370,8 @@ ${textoPagamento}${linhaObs}
           valor,
           descricao,
           observacao,
-          status
+          status,
+          pedidoVinculadoId
         };
         notaSalva = notas[idx];
       }
@@ -2153,6 +2385,7 @@ ${textoPagamento}${linhaObs}
         descricao,
         observacao,
         status,
+        pedidoVinculadoId,
         data: dataHora,
         dataRaw
       };
@@ -2168,10 +2401,12 @@ ${textoPagamento}${linhaObs}
     fecharModalNota();
     renderizarPainelNotasPendentes();
     atualizarContadoresAbas();
+    verificarNotaVinculadaDoOrcamentoAtual();
+
     if (!document.getElementById('modalHistorico').classList.contains('hidden')) {
       filtrarHistorico();
     }
-    alert("✅ Nota gravada com sucesso!");
+    alert("✅ Nota / Boleto registrado com sucesso!");
   }
 
   function alternarStatusNota(id, novoStatus) {
@@ -2188,11 +2423,13 @@ ${textoPagamento}${linhaObs}
 
     renderizarPainelNotasPendentes();
     atualizarContadoresAbas();
+    verificarNotaVinculadaDoOrcamentoAtual();
     filtrarHistorico();
   }
 
   function renderizarPainelNotasPendentes() {
     const notas = carregarNotasLista();
+    const pedidos = carregarHistoricoLista();
     const pendentes = notas.filter(n => n.status === 'pendente');
     const container = document.getElementById('lista_notas_pendentes');
     const painel = document.getElementById('painel_notas_pendentes');
@@ -2214,9 +2451,17 @@ ${textoPagamento}${linhaObs}
       
       const obsHtml = n.observacao ? `<div class="nota-obs-tag">📌 <strong>Obs:</strong> ${n.observacao}</div>` : '';
 
+      let tagVinculo = "";
+      if (n.pedidoVinculadoId) {
+        const ped = pedidos.find(p => p.id === n.pedidoVinculadoId);
+        const numPed = ped ? ped.numero : 'Vínculo';
+        tagVinculo = `<span class="badge-vinculo" onclick="carregarOrcamentoDoHistorico('${n.pedidoVinculadoId}')" title="Clique para abrir o Pedido #${numPed}">🔗 Pedido #${numPed}</span>`;
+      }
+
       div.innerHTML = `
         <div style="flex: 1; min-width: 280px;">
-          <span class="badge-nota">${n.numero}</span> <strong>${n.cliente}</strong> (${n.telefone || 'Sem tel'}) 
+          <span class="badge-nota" onclick="abrirAbaNotasEFiltrar('${n.numero}')">${n.numero}</span> ${tagVinculo} 
+          <strong>${n.cliente}</strong> (${n.telefone || 'Sem tel'}) 
           — Total: <strong>${formatarMoeda(n.valor)}</strong>
           <div style="font-size: 0.88rem; margin-top: 3px; color: #334155;">${n.descricao}</div>
           ${obsHtml}
@@ -2234,6 +2479,8 @@ ${textoPagamento}${linhaObs}
     const notas = carregarNotasLista();
     const n = notas.find(item => item.id === id);
     if (!n) return;
+
+    configurarVinculoPedidoPorId(n.pedidoVinculadoId || "");
 
     document.getElementById('nota_edit_id').value = n.id;
     document.getElementById('nota_numero').value = n.numero;
@@ -2257,8 +2504,48 @@ ${textoPagamento}${linhaObs}
       }
       renderizarPainelNotasPendentes();
       atualizarContadoresAbas();
+      verificarNotaVinculadaDoOrcamentoAtual();
       filtrarHistorico();
     }
+  }
+
+  // VERIFICA SE O PEDIDO CARREGADO NA TELA POSSUI NOTA
+  function verificarNotaVinculadaDoOrcamentoAtual() {
+    const banner = document.getElementById('banner_nota_vinculada');
+    if (!orcamentoAtualId) {
+      banner.classList.add('hidden');
+      notaVinculadaAoOrcamentoAtual = null;
+      return;
+    }
+
+    const notas = carregarNotasLista();
+    const nota = notas.find(n => n.pedidoVinculadoId === orcamentoAtualId);
+
+    if (nota) {
+      notaVinculadaAoOrcamentoAtual = nota;
+      document.getElementById('lbl_nota_vinculada').innerText = nota.numero;
+      const statusSpan = document.getElementById('lbl_status_nota_vinculada');
+      if (nota.status === 'concluido') {
+        statusSpan.innerHTML = `<span class="badge-status-pago">Concluído</span>`;
+      } else {
+        statusSpan.innerHTML = `<span class="badge-status-pendente">Pendente</span>`;
+      }
+      banner.classList.remove('hidden');
+    } else {
+      notaVinculadaAoOrcamentoAtual = null;
+      banner.classList.add('hidden');
+    }
+  }
+
+  function irParaNotaVinculadaAtual() {
+    if (!notaVinculadaAoOrcamentoAtual) return;
+    abrirAbaNotasEFiltrar(notaVinculadaAoOrcamentoAtual.numero);
+  }
+
+  function abrirAbaNotasEFiltrar(termo = '') {
+    abrirHistorico('notas');
+    document.getElementById('filtro_historico').value = termo;
+    filtrarHistorico();
   }
 
   // HISTÓRICO COM ABAS
@@ -2271,6 +2558,7 @@ ${textoPagamento}${linhaObs}
     document.getElementById('modalHistorico').classList.add('hidden');
     verificarAlertasBoletos();
     renderizarPainelNotasPendentes();
+    verificarNotaVinculadaDoOrcamentoAtual();
   }
 
   function alternarAbaHistorico(aba) {
@@ -2342,9 +2630,11 @@ ${textoPagamento}${linhaObs}
     tbody.innerHTML = '';
 
     if (lista.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum pedido/orçamento encontrado.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum pedido/orçamento encontrado.</td></tr>`;
       return;
     }
+
+    const todasNotas = carregarNotasLista();
 
     lista.forEach(orc => {
       let infoPagamento = "Adiantado";
@@ -2357,16 +2647,32 @@ ${textoPagamento}${linhaObs}
         infoPagamento = `Boleto (${vencStr}) ${statusBadge}`;
       }
 
+      // Procurar nota vinculada
+      const notaVinculada = todasNotas.find(n => n.pedidoVinculadoId === orc.id);
+      let vinculoNotaTd = `<span style="color:#94a3b8; font-size:0.8rem;">Nenhum</span>`;
+      if (notaVinculada) {
+        vinculoNotaTd = `
+          <button type="button" class="action-btn link-btn" onclick="abrirAbaNotasEFiltrar('${notaVinculada.numero}')" title="Ver Nota ${notaVinculada.numero}">
+            🔗 ${notaVinculada.numero}
+          </button>
+        `;
+      } else {
+        vinculoNotaTd = `
+          <button type="button" class="action-btn" style="color:#0f766e;" onclick="abrirModalNovaNota('${orc.id}')" title="Criar nota para este pedido">+ Vincular Nota</button>
+        `;
+      }
+
       const obsTooltip = orc.observacao ? `title="Obs: ${orc.observacao}"` : '';
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong class="badge-num">#${orc.numero}</strong></td>
+        <td><strong class="badge-num" onclick="carregarOrcamentoDoHistorico('${orc.id}')">#${orc.numero}</strong></td>
         <td>${orc.data.split(' ')[0]}</td>
         <td><strong ${obsTooltip}>${orc.nome}</strong></td>
         <td>${orc.tel || '-'}</td>
         <td>${infoPagamento}</td>
         <td><strong>${formatarMoeda(orc.total)}</strong></td>
+        <td>${vinculoNotaTd}</td>
         <td class="actions">
           ${orc.formaPagamento === 'boleto' && orc.boletoStatus === 'pendente' 
             ? `<button type="button" class="action-btn pay" onclick="darBaixaBoleto('${orc.id}')" title="Marcar boleto como pago">✓ Pago</button>` 
@@ -2385,9 +2691,11 @@ ${textoPagamento}${linhaObs}
     tbody.innerHTML = '';
 
     if (lista.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhuma nota encontrada.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhuma nota encontrada.</td></tr>`;
       return;
     }
+
+    const todosPedidos = carregarHistoricoLista();
 
     lista.forEach(n => {
       const statusBadge = n.status === 'concluido'
@@ -2396,11 +2704,22 @@ ${textoPagamento}${linhaObs}
 
       const obsInfo = n.observacao ? `<br><small style="color: #64748b;">Obs: ${n.observacao}</small>` : '';
 
+      let pedidoInfo = `<span style="color:#94a3b8; font-size:0.8rem;">Avulsa</span>`;
+      if (n.pedidoVinculadoId) {
+        const ped = todosPedidos.find(p => p.id === n.pedidoVinculadoId);
+        if (ped) {
+          pedidoInfo = `<button type="button" class="action-btn link-btn" onclick="carregarOrcamentoDoHistorico('${ped.id}')" title="Abrir pedido #${ped.numero}">🔗 Pedido #${ped.numero}</button>`;
+        } else {
+          pedidoInfo = `<span style="color:#dc2626; font-size:0.8rem;">Pedido Removido</span>`;
+        }
+      }
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><span class="badge-nota">${n.numero}</span></td>
+        <td><span class="badge-nota" onclick="editarNotaModal('${n.id}')">${n.numero}</span></td>
         <td>${(n.data || '').split(' ')[0]}</td>
         <td><strong>${n.cliente}</strong><br><small>${n.telefone || '-'}</small></td>
+        <td>${pedidoInfo}</td>
         <td>${n.descricao}${obsInfo}</td>
         <td><strong>${formatarMoeda(n.valor)}</strong></td>
         <td>${statusBadge}</td>
@@ -2448,12 +2767,13 @@ ${textoPagamento}${linhaObs}
     const descBtns = document.querySelectorAll('#group-desconto .btn-toggle');
     descBtns.forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes(`(${descontoAtual},`)));
 
-    itensNoOrcamento = JSON.parse(JSON.stringify(orc.itens));
+    itensNoOrcamento = JSON.parse(JSON.stringify(orc.itens || []));
 
     atualizarTagNumero();
     recalcularTodosOsItens();
     renderizarTabela();
     atualizarResumo();
+    verificarNotaVinculadaDoOrcamentoAtual();
     fecharHistorico();
   }
 
@@ -2463,7 +2783,7 @@ ${textoPagamento}${linhaObs}
     if (!orc) return;
 
     let textoItens = "";
-    orc.itens.forEach((it, idx) => {
+    (orc.itens || []).forEach((it, idx) => {
       textoItens += 
 `*Item ${idx + 1}:* ${it.descricao}
   • Quantidade: ${it.qtd} un
@@ -2512,6 +2832,7 @@ ${textoPag}${obsTxt}
       renderizarTabelaHistorico(historico);
       atualizarContadoresAbas();
       verificarAlertasBoletos();
+      verificarNotaVinculadaDoOrcamentoAtual();
     }
   }
 
@@ -2590,9 +2911,17 @@ ${textoPag}${obsTxt}
     const modalPrecos = document.getElementById('modalPrecos');
     const modalHistorico = document.getElementById('modalHistorico');
     const modalNota = document.getElementById('modalNota');
+    const dropdownSugestoes = document.getElementById('dropdown_sugestoes_pedidos');
+    const inputBusca = document.getElementById('input_busca_pedido_vinculo');
+
     if (event.target === modalPrecos) fecharModalPrecos();
     if (event.target === modalHistorico) fecharHistorico();
     if (event.target === modalNota) fecharModalNota();
+
+    // Fecha o dropdown de autocomplete se clicar fora dele
+    if (dropdownSugestoes && event.target !== inputBusca && !dropdownSugestoes.contains(event.target)) {
+      dropdownSugestoes.classList.add('hidden');
+    }
   };
 
   window.onload = function() {
