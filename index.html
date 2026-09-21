@@ -36,6 +36,16 @@
     body { background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
     .container { max-width: 950px; margin: 0 auto; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.06); border: 1px solid var(--border); }
     
+    /* PAINEL LATERAL FLUTUANTE ESQUERDO */
+    .painel-lateral-esquerdo {
+      position: fixed; top: 20px; left: 20px; width: 340px; max-height: calc(100vh - 40px);
+      overflow-y: auto; z-index: 900; pointer-events: none;
+    }
+    .painel-lateral-esquerdo > * { pointer-events: auto; }
+    @media (max-width: 1400px) {
+      .painel-lateral-esquerdo { position: static; width: 100%; max-height: none; margin-bottom: 20px; }
+    }
+
     #tela-login {
       max-width: 400px; margin: 80px auto; background: white; padding: 30px;
       border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border: 1px solid var(--border); text-align: center;
@@ -62,7 +72,7 @@
 
     .alerta-vencimento-box {
       background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--warning-text);
-      padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem;
+      padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
     .alerta-vencimento-box strong { font-size: 0.95rem; }
     .alerta-item { margin-top: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px dashed var(--warning-border); padding-top: 6px; }
@@ -70,10 +80,10 @@
     /* PAINEL DE NOTAS PENDENTES NA TELA PRINCIPAL */
     .painel-notas-box {
       background: var(--note-bg); border: 1px solid var(--note-border); color: #0369a1;
-      padding: 14px 16px; border-radius: 8px; margin-bottom: 15px;
+      padding: 14px 16px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     }
     .painel-notas-box .header-painel-notas {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 5px;
     }
     .nota-card-item {
       background: #ffffff; border: 1px solid #bae6fd; border-radius: 6px;
@@ -291,6 +301,24 @@
   <div id="login-feedback" style="margin-top: 15px; font-size: 0.85rem; color: #b91c1c; display: none;"></div>
 </div>
 
+<!-- PAINEL LATERAL ESQUERDO (FORA DO QUADRO PRINCIPAL) -->
+<div class="painel-lateral-esquerdo">
+  <!-- PAINEL DE NOTAS PENDENTES -->
+  <div id="painel_notas_pendentes" class="painel-notas-box hidden">
+    <div class="header-painel-notas">
+      <strong>📌 Notas & Serviços Pendentes (<span id="count-notas-pendentes">0</span>)</strong>
+      <button type="button" class="action-btn" onclick="abrirHistorico('notas')">Ver Todas</button>
+    </div>
+    <div id="lista_notas_pendentes"></div>
+  </div>
+
+  <!-- ALERTAS DE BOLETOS -->
+  <div id="painel_alertas_boletos" class="alerta-vencimento-box hidden">
+    <strong>⚠️ Boletos próximos / pendentes:</strong>
+    <div id="lista_alertas_boletos"></div>
+  </div>
+</div>
+
 <!-- APLICAÇÃO PRINCIPAL -->
 <div class="container hidden" id="app-container">
   <div class="header-bar">
@@ -309,21 +337,6 @@
         Sair
       </button>
     </div>
-  </div>
-
-  <!-- PAINEL DE NOTAS PENDENTES NA TELA -->
-  <div id="painel_notas_pendentes" class="painel-notas-box hidden">
-    <div class="header-painel-notas">
-      <strong>📌 Notas & Serviços Pendentes de Execução / Entrega (<span id="count-notas-pendentes">0</span>)</strong>
-      <button type="button" class="action-btn" onclick="abrirHistorico('notas')">Ver Todas as Notas</button>
-    </div>
-    <div id="lista_notas_pendentes"></div>
-  </div>
-
-  <!-- ALERTAS DE BOLETOS -->
-  <div id="painel_alertas_boletos" class="alerta-vencimento-box hidden">
-    <strong>⚠️ Boletos com vencimento próximo ou pendentes:</strong>
-    <div id="lista_alertas_boletos"></div>
   </div>
 
   <!-- BANNER DE NOTA VINCULADA AO PEDIDO ATUAL -->
@@ -2342,10 +2355,8 @@ ${textoPagamento}${linhaObs}
     const numNota = nota.numero || "Sem número";
     const docCli = nota.documento || "Não informado";
 
-    // ASSUNTO: Começa sempre com NOTA/BOLETO
     const assuntoFormatado = `NOTA/BOLETO - ${nomeCli} - ${numNota} - ${numTel}`;
 
-    // DESCRIÇÃO: Repete o título SEM "NOTA/BOLETO", seguido de número da nota e observação/descrição
     let corpoDescricao = `${nomeCli} - ${numNota} - ${numTel}\n`;
     corpoDescricao += `==========================================\n`;
     corpoDescricao += `NÚMERO DA NOTA: ${numNota}\n`;
@@ -2559,7 +2570,7 @@ ${textoPagamento}${linhaObs}
       }
 
       div.innerHTML = `
-        <div style="flex: 1; min-width: 280px;">
+        <div style="flex: 1; min-width: 220px;">
           <span class="badge-nota" onclick="abrirAbaNotasEFiltrar('${n.numero}')">${n.numero}</span> ${tagVinculo} 
           <strong>${n.cliente}</strong>${docHtml} (${n.telefone || 'Sem tel'}) 
           — Total: <strong>${formatarMoeda(n.valor)}</strong>
@@ -2567,9 +2578,9 @@ ${textoPagamento}${linhaObs}
           ${obsHtml}
         </div>
         <div style="white-space: nowrap;">
-          <button type="button" class="action-btn done" onclick="alternarStatusNota('${n.id}', 'concluido')" title="Finalizar serviço">✓ Feito / Concluir</button>
-          <button type="button" class="action-btn email" onclick="dispararEmailNotaPorId('${n.id}')" title="Reenviar E-mail">📧 E-mail</button>
-          <button type="button" class="action-btn edit" onclick="editarNotaModal('${n.id}')">✏️ Editar</button>
+          <button type="button" class="action-btn done" onclick="alternarStatusNota('${n.id}', 'concluido')" title="Finalizar serviço">✓ Feito</button>
+          <button type="button" class="action-btn email" onclick="dispararEmailNotaPorId('${n.id}')" title="Reenviar E-mail">📧</button>
+          <button type="button" class="action-btn edit" onclick="editarNotaModal('${n.id}')">✏️</button>
         </div>
       `;
       container.appendChild(div);
@@ -2948,7 +2959,7 @@ ${textoPag}${obsTxt}
       }
 
       renderizarTabelaHistorico(historico);
-      atualizarContadoresAbas();
+      atualizarContadorHistorico();
       verificarAlertasBoletos();
       verificarNotaVinculadaDoOrcamentoAtual();
     }
