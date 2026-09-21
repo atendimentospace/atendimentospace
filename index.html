@@ -239,37 +239,18 @@
     .badge-status-pago { background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
     .badge-status-pendente { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
 
-    /* ESTILOS DE AUTOCOMPLETE DE PEDIDO */
+    /* AUTOCOMPLETE */
     .dropdown-sugestoes {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-top: none;
-      border-radius: 0 0 8px 8px;
-      max-height: 190px;
-      overflow-y: auto;
-      z-index: 1050;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.12);
+      position: absolute; top: 100%; left: 0; right: 0; background: #ffffff;
+      border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px;
+      max-height: 190px; overflow-y: auto; z-index: 1050; box-shadow: 0 10px 20px rgba(0,0,0,0.12);
     }
     .item-sugestao-pedido {
-      padding: 9px 12px;
-      border-bottom: 1px solid #f1f5f9;
-      cursor: pointer;
-      font-size: 0.88rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      transition: background 0.15s;
+      padding: 9px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer;
+      font-size: 0.88rem; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;
     }
-    .item-sugestao-pedido:hover {
-      background: #f0fdf4;
-    }
-    .item-sugestao-pedido strong {
-      color: var(--primary);
-    }
+    .item-sugestao-pedido:hover { background: #f0fdf4; }
+    .item-sugestao-pedido strong { color: var(--primary); }
 
     /* LAYOUT IMPRESSÃO / PDF */
     #documento-pdf-print { display: none; }
@@ -738,7 +719,6 @@
       <button class="close-btn" onclick="fecharHistorico()">&times;</button>
     </div>
 
-    <!-- ABAS -->
     <div class="tabs-nav">
       <button type="button" class="tab-btn active" id="tab_btn_pedidos" onclick="alternarAbaHistorico('pedidos')">📂 Pedidos / Orçamentos (<span id="tab_count_pedidos">0</span>)</button>
       <button type="button" class="tab-btn" id="tab_btn_notas" onclick="alternarAbaHistorico('notas')">📝 Notas & Serviços (<span id="tab_count_notas">0</span>)</button>
@@ -791,7 +771,7 @@
   </div>
 </div>
 
-<!-- MODAL PARA CRIAR / EDITAR NOTA COM AUTOCOMPLETE DIGITÁVEL DE PEDIDO -->
+<!-- MODAL PARA CRIAR / EDITAR NOTA COM AUTOCOMPLETE DE PEDIDO -->
 <div id="modalNota" class="modal-overlay hidden">
   <div class="modal-content" style="max-width: 620px;">
     <div class="modal-header">
@@ -801,10 +781,9 @@
 
     <input type="hidden" id="nota_edit_id">
 
-    <!-- CAMPO DE SELEÇÃO E VINCULAÇÃO COM BUSCA DIGITÁVEL -->
+    <!-- BUSCA DIGITÁVEL DE PEDIDO -->
     <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 15px; position: relative;">
       <label style="margin-top: 0; color: #0f766e;">🔗 Vincular a um Pedido / Orçamento existente:</label>
-      
       <input type="hidden" id="nota_vinculo_pedido">
       
       <div style="display: flex; gap: 6px; align-items: center; position: relative;">
@@ -812,7 +791,6 @@
         <button type="button" id="btn_limpar_vinculo" onclick="desvincularPedidoDaNota()" style="background: #f1f5f9; border: 1px solid var(--border); color: #64748b; padding: 9px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;" title="Desvincular pedido">✕</button>
       </div>
 
-      <!-- DROPDOWN COM SUGESTÕES -->
       <div id="dropdown_sugestoes_pedidos" class="dropdown-sugestoes hidden"></div>
       
       <small id="legenda_vinculo_pedido" style="color: #64748b; font-size: 0.8rem; display: block; margin-top: 5px;">
@@ -860,11 +838,11 @@
       </select>
     </div>
 
-    <!-- OPÇÃO DE ENVIO DE E-MAIL SILENCIOSO VIA EMAILJS -->
+    <!-- OPÇÃO DE ENVIO DE E-MAIL SILENCIOSO -->
     <div style="background: #fdf4ff; border: 1px solid #f0abfc; padding: 10px 12px; border-radius: 8px; margin-top: 14px;">
       <label class="checkbox-inline" style="color: #86198f; margin: 0; font-size: 0.88rem;">
         <input type="checkbox" id="chk_enviar_email_nota" checked> 
-        📧 Enviar e-mail de alerta para <strong>graficaimpacthaus@gmail.com</strong>
+        📧 Enviar e-mail silencioso automático para <strong>graficaimpacthaus@gmail.com</strong>
       </label>
     </div>
 
@@ -907,19 +885,20 @@
 
 <script>
   // ==========================================
-  // CONFIGURAÇÕES DO EMAILJS
-  // Substitua pelos seus dados obtidos no painel do EmailJS:
+  // CONFIGURAÇÕES DO EMAILJS (SUAS CHAVES)
   // ==========================================
   const EMAILJS_PUBLIC_KEY = "9cmhvk-G7te_79ye"; 
   const EMAILJS_SERVICE_ID = "service_jlv0mfb"; 
   const EMAILJS_TEMPLATE_ID = "template_o9dbngm";
   const EMAIL_DESTINO = "graficaimpacthaus@gmail.com";
 
-  if (window.emailjs && EMAILJS_PUBLIC_KEY !== "SUA_PUBLIC_KEY_AQUI") {
-    try {
-      emailjs.init(EMAILJS_PUBLIC_KEY);
-    } catch(err) {
-      console.warn("Erro ao inicializar EmailJS:", err);
+  function inicializarEmailJS() {
+    if (window.emailjs && EMAILJS_PUBLIC_KEY) {
+      try {
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+      } catch(e) {
+        console.warn("Aviso EmailJS:", e);
+      }
     }
   }
 
@@ -2349,48 +2328,54 @@ ${textoPagamento}${linhaObs}
     document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
   }
 
-  // DISPARO DE E-MAIL (EMAILJS SILENCIOSO COM FALLBACK PARA MAILTO)
+  // DISPARO DE E-MAIL 100% SILENCIOSO VIA API HTTP (SEM ABRIR JANELAS NEM APPS)
   async function enviarEmailSilenciosoEmailJS(nota) {
     const nomeCli = nota.cliente || "Cliente Balcão";
     const numTel = nota.telefone || "Sem telefone";
     const numNota = nota.numero || "Sem número";
 
-    // Assunto no padrão solicitado: NOME DO CLIENTE - NOTA/BOLETO - NUMERO DE TELEFONE
+    // Assunto no formato solicitado: Nome do cliente - nota/boleto - numero de telefone
     const assuntoFormatado = `${nomeCli} - ${numNota} - ${numTel}`;
 
     // Descrição: o que estiver em observação/descrição
-    let corpoDescricao = `DESCRIÇÃO DO SERVIÇO / ITENS:\n${nota.descricao || 'Nenhuma descrição fornecida.'}\n\n`;
+    let corpoDescricao = `DESCRIÇÃO DO SERVIÇO / ITENS:\n${nota.descricao || 'Sem descrição.'}\n\n`;
     if (nota.observacao) {
       corpoDescricao += `OBSERVAÇÕES:\n${nota.observacao}\n\n`;
     }
     corpoDescricao += `------------------------------------------\nValor Total: ${formatarMoeda(nota.valor)}\nStatus: ${nota.status === 'concluido' ? 'Concluído' : 'Pendente'}\nData: ${nota.data}`;
 
-    // Verifica se as chaves foram preenchidas
-    if (EMAILJS_PUBLIC_KEY && EMAILJS_PUBLIC_KEY !== "SUA_PUBLIC_KEY_AQUI") {
-      try {
-        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-          to_email: EMAIL_DESTINO,
-          subject: assuntoFormatado,
-          message: corpoDescricao,
-          cliente_nome: nomeCli,
-          nota_numero: numNota,
-          telefone: numTel,
-          valor: formatarMoeda(nota.valor)
-        });
-        console.log("✅ E-mail enviado com sucesso via EmailJS!");
-        return true;
-      } catch (error) {
-        console.error("Erro ao enviar pelo EmailJS:", error);
-        // Fallback nativo caso haja erro de rede ou chave
-        const fallbackUrl = `mailto:${EMAIL_DESTINO}?subject=${encodeURIComponent(assuntoFormatado)}&body=${encodeURIComponent(corpoDescricao)}`;
-        window.open(fallbackUrl, '_blank');
-        return false;
+    const dataPayload = {
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: {
+        to_email: EMAIL_DESTINO,
+        subject: assuntoFormatado,
+        message: corpoDescricao,
+        cliente_nome: nomeCli,
+        nota_numero: numNota,
+        telefone: numTel,
+        valor: formatarMoeda(nota.valor)
       }
-    } else {
-      // Caso as chaves do EmailJS ainda não tenham sido inseridas, abre nativamente
-      const mailtoUrl = `mailto:${EMAIL_DESTINO}?subject=${encodeURIComponent(assuntoFormatado)}&body=${encodeURIComponent(corpoDescricao)}`;
-      window.open(mailtoUrl, '_blank');
-      return true;
+    };
+
+    try {
+      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataPayload)
+      });
+
+      if (response.ok) {
+        return { ok: true };
+      } else {
+        const errTxt = await response.text();
+        console.error("Erro no retorno da API do EmailJS:", errTxt);
+        return { ok: false, motivo: errTxt };
+      }
+    } catch(err) {
+      console.error("Erro de conexão ao enviar e-mail:", err);
+      return { ok: false, motivo: err.message };
     }
   }
 
@@ -2436,7 +2421,7 @@ ${textoPagamento}${linhaObs}
     const dataHora = new Date().toLocaleString('pt-BR');
     const dataRaw = Date.now();
 
-    btnSalvar.innerText = "⏳ Salvando...";
+    btnSalvar.innerText = "⏳ Gravando e enviando e-mail...";
     btnSalvar.disabled = true;
 
     let notas = carregarNotasLista();
@@ -2481,9 +2466,14 @@ ${textoPagamento}${linhaObs}
       db.collection('notas').doc(notaSalva.id).set(notaSalva);
     }
 
-    // Disparo automático via EmailJS
+    let statusEmailMsg = "";
     if (deveEnviarEmail) {
-      await enviarEmailSilenciosoEmailJS(notaSalva);
+      const resEmail = await enviarEmailSilenciosoEmailJS(notaSalva);
+      if (resEmail.ok) {
+        statusEmailMsg = "\n📧 E-mail enviado silenciosamente com sucesso para graficaimpacthaus@gmail.com!";
+      } else {
+        statusEmailMsg = `\n⚠️ Nota salva, mas houve falha no envio do e-mail: ${resEmail.motivo}`;
+      }
     }
 
     btnSalvar.innerText = "💾 Salvar Nota / Boleto";
@@ -2497,7 +2487,7 @@ ${textoPagamento}${linhaObs}
     if (!document.getElementById('modalHistorico').classList.contains('hidden')) {
       filtrarHistorico();
     }
-    alert("✅ Nota / Boleto registrado com sucesso!");
+    alert(`✅ Nota / Boleto registrado com sucesso!${statusEmailMsg}`);
   }
 
   function alternarStatusNota(id, novoStatus) {
@@ -2567,13 +2557,16 @@ ${textoPagamento}${linhaObs}
     });
   }
 
-  function dispararEmailNotaPorId(id) {
+  async function dispararEmailNotaPorId(id) {
     const notas = carregarNotasLista();
     const n = notas.find(item => item.id === id);
-    if (n) {
-      enviarEmailSilenciosoEmailJS(n).then(() => {
-        alert("📧 E-mail enviado!");
-      });
+    if (!n) return;
+
+    const res = await enviarEmailSilenciosoEmailJS(n);
+    if (res.ok) {
+      alert("📧 E-mail enviado com sucesso em segundo plano!");
+    } else {
+      alert(`⚠️ Erro ao enviar: ${res.motivo}`);
     }
   }
 
@@ -2592,7 +2585,7 @@ ${textoPagamento}${linhaObs}
     document.getElementById('nota_descricao').value = n.descricao || '';
     document.getElementById('nota_observacao').value = n.observacao || '';
     document.getElementById('nota_status').value = n.status || 'pendente';
-    document.getElementById('chk_enviar_email_nota').checked = false; // Desmarcado ao editar para não reenviar sem querer
+    document.getElementById('chk_enviar_email_nota').checked = false;
     document.getElementById('titulo_modal_nota').innerText = `✏️ Editar Nota ${n.numero}`;
 
     document.getElementById('modalNota').classList.remove('hidden');
@@ -2750,7 +2743,6 @@ ${textoPagamento}${linhaObs}
         infoPagamento = `Boleto (${vencStr}) ${statusBadge}`;
       }
 
-      // Procurar nota vinculada
       const notaVinculada = todasNotas.find(n => n.pedidoVinculadoId === orc.id);
       let vinculoNotaTd = `<span style="color:#94a3b8; font-size:0.8rem;">Nenhum</span>`;
       if (notaVinculada) {
@@ -3022,13 +3014,13 @@ ${textoPag}${obsTxt}
     if (event.target === modalHistorico) fecharHistorico();
     if (event.target === modalNota) fecharModalNota();
 
-    // Fecha o dropdown de autocomplete se clicar fora dele
     if (dropdownSugestoes && event.target !== inputBusca && !dropdownSugestoes.contains(event.target)) {
       dropdownSugestoes.classList.add('hidden');
     }
   };
 
   window.onload = function() {
+    inicializarEmailJS();
     atualizarTagNumero();
     atualizarContadorHistorico();
     verificarAlertasBoletos();
