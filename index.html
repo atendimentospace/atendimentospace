@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Calculadora de Orçamentos - Impact Haus</title>
+  <title>Calculadora de Orçamentos e Notas - Impact Haus</title>
 
   <!-- SDKs do Firebase v9 Compat -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -25,6 +25,8 @@
       --warning-bg: #fefce8;
       --warning-border: #fde047;
       --warning-text: #854d0e;
+      --note-border: #38bdf8;
+      --note-bg: #f0f9ff;
     }
 
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -47,7 +49,7 @@
     }
     .header-bar h2 { margin: 0; color: var(--primary); font-size: 1.45rem; }
     
-    .top-actions { display: flex; gap: 8px; }
+    .top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn-action-top {
       background: var(--card-inner); border: 1px solid var(--border); color: var(--text);
       padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600;
@@ -62,6 +64,25 @@
     .alerta-vencimento-box strong { font-size: 0.95rem; }
     .alerta-item { margin-top: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px dashed var(--warning-border); padding-top: 6px; }
 
+    /* PAINEL DE NOTAS PENDENTES NA TELA PRINCIPAL */
+    .painel-notas-box {
+      background: var(--note-bg); border: 1px solid var(--note-border); color: #0369a1;
+      padding: 14px 16px; border-radius: 8px; margin-bottom: 15px;
+    }
+    .painel-notas-box .header-painel-notas {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+    }
+    .nota-card-item {
+      background: #ffffff; border: 1px solid #bae6fd; border-radius: 6px;
+      padding: 10px 12px; margin-top: 8px; display: flex; justify-content: space-between;
+      align-items: center; flex-wrap: wrap; gap: 10px; color: var(--text);
+    }
+    .nota-card-item strong { color: #0284c7; }
+    .nota-obs-tag {
+      display: block; font-size: 0.85rem; color: #475569; background: #f1f5f9;
+      padding: 4px 8px; border-radius: 4px; margin-top: 5px; border-left: 3px solid #0284c7;
+    }
+
     .alerta-cliente-existente {
       background: #dcfce7; border: 1px solid #86efac; color: #14532d;
       padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; margin-top: 6px; display: flex; justify-content: space-between; align-items: center;
@@ -71,11 +92,12 @@
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 
     label { display: block; font-weight: 600; margin-top: 12px; margin-bottom: 6px; font-size: 0.9rem; color: #334155; }
-    input[type="text"], input[type="password"], input[type="number"], input[type="date"], select {
+    input[type="text"], input[type="password"], input[type="number"], input[type="date"], select, textarea {
       width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem;
       background: #ffffff; color: var(--text);
     }
-    input:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.15); }
+    textarea { resize: vertical; min-height: 60px; font-size: 0.92rem; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.15); }
 
     .btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
     .btn-toggle {
@@ -121,6 +143,7 @@
     .action-btn.clone { color: #16a34a; }
     .action-btn.del { color: #dc2626; }
     .action-btn.pay { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
+    .action-btn.done { color: #047857; background: #d1fae5; border-color: #6ee7b7; font-weight: bold; }
 
     .result-box {
       margin-top: 20px; background: var(--primary-light); border: 1px dashed var(--primary);
@@ -131,24 +154,30 @@
       padding: 14px; border-radius: 6px; border: 1px solid #bbf7d0; margin-top: 10px; color: #14532d; line-height: 1.45;
     }
     
-    .btn-group-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .btn-group-actions { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
     .btn-copy {
-      background: var(--primary); color: #ffffff; border: none; padding: 14px;
-      font-size: 0.95rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
+      background: var(--primary); color: #ffffff; border: none; padding: 14px 10px;
+      font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
     }
     .btn-copy:hover { background: var(--primary-hover); }
 
     .btn-pdf {
-      background: #dc2626; color: white; border: none; padding: 14px;
-      font-size: 0.95rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
+      background: #dc2626; color: white; border: none; padding: 14px 10px;
+      font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
     }
     .btn-pdf:hover { background: #b91c1c; }
 
     .btn-save-budget {
-      background: #0284c7; color: white; border: none; padding: 14px;
-      font-size: 0.95rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
+      background: #0284c7; color: white; border: none; padding: 14px 10px;
+      font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
     }
     .btn-save-budget:hover { background: #0369a1; }
+
+    .btn-make-note {
+      background: #0d9488; color: white; border: none; padding: 14px 10px;
+      font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-make-note:hover { background: #0f766e; }
 
     .checkbox-inline { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--text); }
 
@@ -170,6 +199,14 @@
     .close-btn { font-size: 1.6rem; cursor: pointer; border: none; background: none; color: var(--text-muted); }
     .close-btn:hover { color: #000; }
 
+    .tabs-nav { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid var(--border); }
+    .tab-btn {
+      padding: 10px 16px; border: none; background: none; font-size: 0.95rem;
+      font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
     .table-precos { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
     .table-precos th, .table-precos td { border: 1px solid var(--border); padding: 8px; text-align: left; }
     .table-precos th { background: var(--card-inner); color: var(--primary); font-weight: 600; }
@@ -185,6 +222,7 @@
 
     .search-input { width: 100%; padding: 11px 14px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: 8px; background: #ffffff; color: var(--text); }
     .badge-num { background: #e0f2fe; color: #0369a1; padding: 3px 7px; border-radius: 5px; font-weight: bold; }
+    .badge-nota { background: #fef3c7; color: #b45309; padding: 3px 7px; border-radius: 5px; font-weight: bold; }
     .badge-status-pago { background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
     .badge-status-pendente { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
 
@@ -208,7 +246,8 @@
       .pdf-table th, .pdf-table td { border: 1px solid #aaa; padding: 6px 8px; }
       .pdf-table th { background: #f3f4f6; text-align: left; }
       .pdf-total-box { margin-top: 12px; text-align: right; font-size: 15px; font-weight: bold; }
-      .pdf-termos { margin-top: 20px; font-size: 11px; line-height: 1.5; }
+      .pdf-obs { margin-top: 14px; font-size: 11px; border: 1px dashed #666; padding: 8px; background: #fafafa; }
+      .pdf-termos { margin-top: 14px; font-size: 11px; line-height: 1.5; }
       .pdf-dados-bancarios { margin-top: 12px; border: 1px solid #ccc; padding: 8px 12px; font-size: 11px; background: #fafafa; }
       .pdf-footer { margin-top: 28px; border-top: 1px solid #ddd; padding-top: 10px; font-size: 9.5px; text-align: center; color: #444; }
     }
@@ -231,11 +270,14 @@
   <div class="header-bar">
     <h2>Calculadora de Orçamentos - Impact Haus</h2>
     <div class="top-actions">
-      <button type="button" class="btn-action-top" onclick="abrirHistorico()">
+      <button type="button" class="btn-action-top" style="background:#f0fdf4; border-color:#86efac; color:#15803d;" onclick="abrirModalNovaNota()">
+        📝 Lançar Nota
+      </button>
+      <button type="button" class="btn-action-top" onclick="abrirHistorico('pedidos')">
         📂 Histórico (<span id="count-historico">0</span>)
       </button>
       <button type="button" class="btn-action-top" onclick="abrirModalPrecos()">
-        ⚙️ Configurar Preços
+        ⚙️ Preços
       </button>
       <button type="button" class="btn-action-top" style="color:#b91c1c;" onclick="encerrarSessao()">
         Sair
@@ -243,14 +285,24 @@
     </div>
   </div>
 
+  <!-- PAINEL DE NOTAS PENDENTES NA TELA -->
+  <div id="painel_notas_pendentes" class="painel-notas-box hidden">
+    <div class="header-painel-notas">
+      <strong>📌 Notas & Serviços Pendentes de Execução / Entrega (<span id="count-notas-pendentes">0</span>)</strong>
+      <button type="button" class="action-btn" onclick="abrirHistorico('notas')">Ver Todas as Notas</button>
+    </div>
+    <div id="lista_notas_pendentes"></div>
+  </div>
+
+  <!-- ALERTAS DE BOLETOS -->
   <div id="painel_alertas_boletos" class="alerta-vencimento-box hidden">
-    <strong>⚠️ Atenção: Boletos com vencimento próximo ou pendentes!</strong>
+    <strong>⚠️ Boletos com vencimento próximo ou pendentes:</strong>
     <div id="lista_alertas_boletos"></div>
   </div>
 
   <div style="background: var(--card-inner); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
     <div>
-      <span>Orçamento Atual: <strong id="tag_orcamento_num" class="badge-num">#001</strong></span>
+      <span>Orçamento / Pedido Atual: <strong id="tag_orcamento_num" class="badge-num">#001</strong></span>
     </div>
     <button type="button" onclick="iniciarNovoOrcamento(true)" style="background: #ffffff; border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ Novo Orçamento Limpo</button>
   </div>
@@ -442,7 +494,7 @@
       </select>
     </div>
 
-    <!-- Bloco de Apostila, Encadernação e Livreto -->
+    <!-- Apostila, Encadernação e Livreto -->
     <div id="box-apostila-wrapper" class="box-options">
       <div style="display: flex; gap: 20px; flex-wrap: wrap;">
         <label class="checkbox-inline">
@@ -488,7 +540,7 @@
       </div>
     </div>
 
-    <!-- Bloco de Laminação -->
+    <!-- Laminação -->
     <div class="box-options">
       <label class="checkbox-inline">
         <input type="checkbox" id="chk_laminado" onchange="toggleLaminacao()"> Laminado?
@@ -532,8 +584,12 @@
     </table>
   </div>
 
+  <!-- CAMPO DE OBSERVAÇÃO DO PEDIDO -->
+  <label for="orc_observacao">Observações do Pedido / Acabamento / Detalhes de Produção:</label>
+  <textarea id="orc_observacao" placeholder="Ex: Refilar sem borda branca, cliente traz arquivo em PDF/X-1a, embalar em pacotes de 100 unidades..." oninput="atualizarResumo()"></textarea>
+
   <!-- Desconto -->
-  <label style="margin-top: 22px;">Aplicar Desconto Promocional (Sobre o Total):</label>
+  <label style="margin-top: 15px;">Aplicar Desconto Promocional (Sobre o Total):</label>
   <div class="btn-group" id="group-desconto">
     <button type="button" class="btn-toggle active" onclick="setDesconto(0, event)">Sem Desconto</button>
     <button type="button" class="btn-toggle" onclick="setDesconto(5, event)">🏷️ 5% de Desconto</button>
@@ -544,9 +600,10 @@
   <div class="result-box">
     <div class="preview-text" id="preview_texto">Adicione itens para visualizar o orçamento completo...</div>
     <div class="btn-group-actions">
-      <button type="button" class="btn-copy" onclick="copiarOrcamento()">📋 Copiar Orçamento</button>
-      <button type="button" class="btn-pdf" id="btn_baixar_pdf" onclick="imprimirPDF()">📄 Gerar Arquivo PDF</button>
-      <button type="button" class="btn-save-budget" onclick="salvarOrcamentoNoHistorico()">💾 Salvar Orçamento</button>
+      <button type="button" class="btn-copy" onclick="copiarOrcamento()">📋 Copiar Texto</button>
+      <button type="button" class="btn-pdf" id="btn_baixar_pdf" onclick="imprimirPDF()">📄 Gerar PDF</button>
+      <button type="button" class="btn-save-budget" onclick="salvarOrcamentoNoHistorico()">💾 Salvar Pedido</button>
+      <button type="button" class="btn-make-note" onclick="converterOrcamentoEmNota()">📝 Gerar Nota</button>
     </div>
   </div>
 </div>
@@ -561,7 +618,7 @@
     <div style="text-align: right; font-size: 12px;">
       <strong style="font-size: 15px;">Orçamento N° <span id="pdf_orc_num">001</span></strong><br>
       ImpactHaus Gráfica e Comunicação Visual<br>
-      Tel: 43 3324.8899[cite: 1]
+      Tel: 43 3324.8899
     </div>
   </div>
 
@@ -594,6 +651,10 @@
     TOTAL: <span id="pdf_valor_total" style="color: #065f46;">R$ 0,00</span>
   </div>
 
+  <div id="pdf_obs_box" class="pdf-obs hidden">
+    <strong>Observações:</strong> <span id="pdf_obs_texto"></span>
+  </div>
+
   <div class="pdf-termos">
     <strong>Termos e Condições Comerciais:</strong><br>
     * Validade do orçamento: 30 dias;<br>
@@ -604,43 +665,130 @@
 
   <div class="pdf-dados-bancarios">
     <strong>Dados Bancários para Pagamento / PIX:</strong><br>
-    Banco: 290 - PagSeguro[cite: 1]<br>
-    Agência: 0001[cite: 1]<br>
-    Conta: 73931126-4[cite: 1]
+    Banco: 290 - PagSeguro<br>
+    Agência: 0001<br>
+    Conta: 73931126-4
   </div>
 
   <div class="pdf-footer">
     <strong>IMPACT HAUS GRÁFICA E EDITORA LTDA.</strong><br>
-    CNPJ: 54.262.929/0001-18 — Av. Higienópolis, 311 - Centro - Londrina - Paraná - CEP: 86020-080[cite: 1]
+    CNPJ: 54.262.929/0001-18 — Av. Higienópolis, 311 - Centro - Londrina - Paraná - CEP: 86020-080
   </div>
 </div>
 
-<!-- MODAL DE HISTÓRICO -->
+<!-- MODAL DE HISTÓRICO COM ABAS (PEDIDOS VS NOTAS) -->
 <div id="modalHistorico" class="modal-overlay hidden">
   <div class="modal-content">
     <div class="modal-header">
-      <h3>Histórico de Orçamentos Salvos</h3>
+      <h3>Histórico de Registros</h3>
       <button class="close-btn" onclick="fecharHistorico()">&times;</button>
     </div>
 
-    <div class="search-bar-wrapper" style="margin-bottom: 15px;">
-      <input type="text" id="filtro_historico" class="search-input" placeholder="🔍 Buscar por número, nome, telefone..." oninput="filtrarHistorico()">
+    <!-- ABAS -->
+    <div class="tabs-nav">
+      <button type="button" class="tab-btn active" id="tab_btn_pedidos" onclick="alternarAbaHistorico('pedidos')">📂 Pedidos / Orçamentos (<span id="tab_count_pedidos">0</span>)</button>
+      <button type="button" class="tab-btn" id="tab_btn_notas" onclick="alternarAbaHistorico('notas')">📝 Notas & Serviços (<span id="tab_count_notas">0</span>)</button>
     </div>
 
-    <table class="table-custom">
-      <thead>
-        <tr>
-          <th>Nº</th>
-          <th>Data</th>
-          <th>Cliente</th>
-          <th>Telefone</th>
-          <th>Pagamento</th>
-          <th>Total</th>
-          <th style="text-align: right;">Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbody-historico"></tbody>
-    </table>
+    <div class="search-bar-wrapper" style="margin-bottom: 15px;">
+      <input type="text" id="filtro_historico" class="search-input" placeholder="🔍 Buscar por número, cliente, observação..." oninput="filtrarHistorico()">
+    </div>
+
+    <!-- TABELA DE PEDIDOS -->
+    <div id="aba_conteudo_pedidos">
+      <table class="table-custom">
+        <thead>
+          <tr>
+            <th>Nº</th>
+            <th>Data</th>
+            <th>Cliente</th>
+            <th>Telefone</th>
+            <th>Pagamento</th>
+            <th>Total</th>
+            <th style="text-align: right;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-historico"></tbody>
+      </table>
+    </div>
+
+    <!-- TABELA DE NOTAS -->
+    <div id="aba_conteudo_notas" class="hidden">
+      <div style="margin-bottom: 10px; display:flex; justify-content: flex-end;">
+        <button type="button" class="btn-action-top" style="background: #15803d; color: white;" onclick="abrirModalNovaNota()">+ Lançar Nova Nota</button>
+      </div>
+      <table class="table-custom">
+        <thead>
+          <tr>
+            <th>Nº Nota</th>
+            <th>Data</th>
+            <th>Cliente</th>
+            <th>Descrição / Itens</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th style="text-align: right;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-historico-notas"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PARA CRIAR / EDITAR NOTA -->
+<div id="modalNota" class="modal-overlay hidden">
+  <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-header">
+      <h3 id="titulo_modal_nota">📝 Lançar Nova Nota</h3>
+      <button class="close-btn" onclick="fecharModalNota()">&times;</button>
+    </div>
+
+    <input type="hidden" id="nota_edit_id">
+
+    <div class="grid-2">
+      <div>
+        <label>Número da Nota:</label>
+        <input type="text" id="nota_numero" placeholder="Ex: NT-101">
+      </div>
+      <div>
+        <label>Valor Total (R$):</label>
+        <input type="number" id="nota_valor" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label>Cliente:</label>
+        <input type="text" id="nota_cliente" placeholder="Nome do cliente">
+      </div>
+      <div>
+        <label>Telefone:</label>
+        <input type="text" id="nota_telefone" placeholder="(00) 00000-0000">
+      </div>
+    </div>
+
+    <div>
+      <label>Descrição do Serviço / Itens:</label>
+      <textarea id="nota_descricao" placeholder="Ex: 500 cartões de visita 4x0 couchê 300g com laminação fosca..." style="min-height: 75px;"></textarea>
+    </div>
+
+    <div>
+      <label>Observações Adicionais:</label>
+      <textarea id="nota_observacao" placeholder="Ex: Prazo para amanhã às 16h, acabamento refilado, entregar para Michael..."></textarea>
+    </div>
+
+    <div>
+      <label>Status da Nota:</label>
+      <select id="nota_status">
+        <option value="pendente">⏳ Pendente (Fica na tela)</option>
+        <option value="concluido">✅ Feito / Concluído</option>
+      </select>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-reset-modal" onclick="fecharModalNota()">Cancelar</button>
+      <button type="button" class="btn-save-modal" onclick="salvarNota()">💾 Salvar Nota</button>
+    </div>
   </div>
 </div>
 
@@ -854,6 +1002,7 @@
   let categoriaAtual = 'sulfite';
   let descontoAtual = 0;
   let formaPagamentoAtual = 'adiantado';
+  let abaAtualHistorico = 'pedidos';
 
   let itensNoOrcamento = [];
   let itemEditandoIndex = null;
@@ -883,6 +1032,19 @@
       }
       atualizarContadorHistorico();
       verificarAlertasBoletos();
+    });
+
+    // Sincronizar Notas
+    db.collection('notas').orderBy('dataRaw', 'desc').get().then((querySnapshot) => {
+      let listaNotas = [];
+      querySnapshot.forEach((doc) => {
+        listaNotas.push(doc.data());
+      });
+      if (listaNotas.length > 0) {
+        localStorage.setItem('impact_haus_notas', JSON.stringify(listaNotas));
+      }
+      renderizarPainelNotasPendentes();
+      atualizarContadoresAbas();
     });
   }
 
@@ -1161,7 +1323,7 @@
   }
 
   function formatarMoeda(valor) {
-    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   }
 
   function capturarDadosDoItem() {
@@ -1342,7 +1504,7 @@
       }
     }
 
-    // LÓGICA DE APOSTILA, ENCADERNAÇÃO E LIVRETO
+    // APOSTILA, ENCADERNAÇÃO E LIVRETO
     if (item.ehApostila) {
       let qtdFolhasFisicas = item.paginas;
       let qtdCobrada = item.paginas;
@@ -1545,6 +1707,7 @@
   function atualizarResumo() {
     const nome = document.getElementById('cli_nome').value.trim() || "Não informado";
     const tel = document.getElementById('cli_tel').value.trim() || "Não informado";
+    const obs = document.getElementById('orc_observacao').value.trim();
     const hoje = new Date();
     const dataStr = hoje.toLocaleDateString('pt-BR');
 
@@ -1591,6 +1754,8 @@
       textoPagamento = `💳 *Pagamento:* Boleto Bancário\n📅 *Vencimento:* ${vStr} ${statusStr}`;
     }
 
+    let linhaObs = obs ? `\n📌 *Obs:* ${obs}\n` : "";
+
     const textoFinal = 
 `📄 *ORÇAMENTO DE IMPRESSÃO #${numeroOrcamentoAtual}*
 ----------------------------------------
@@ -1601,7 +1766,7 @@
 ${textoItens.trim()}
 ----------------------------------------
 ${linhaSubtotal}${linhaDesconto}💰 *VALOR TOTAL:* ${formatarMoeda(totalFinal)}
-${textoPagamento}
+${textoPagamento}${linhaObs}
 ----------------------------------------
 *Gráfica Impact Haus*`;
 
@@ -1630,6 +1795,7 @@ ${textoPagamento}
 
     const nome = document.getElementById('cli_nome').value.trim() || "Cliente Balcão";
     const tel = document.getElementById('cli_tel').value.trim() || "Não informado";
+    const obs = document.getElementById('orc_observacao').value.trim();
 
     const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
     const d = new Date();
@@ -1639,6 +1805,14 @@ ${textoPagamento}
     document.getElementById('pdf_cli_nome').innerText = nome;
     document.getElementById('pdf_cli_tel').innerText = tel;
     document.getElementById('pdf_data_extenso').innerText = dataExtenso;
+
+    const pdfObsBox = document.getElementById('pdf_obs_box');
+    if (obs) {
+      pdfObsBox.classList.remove('hidden');
+      document.getElementById('pdf_obs_texto').innerText = obs;
+    } else {
+      pdfObsBox.classList.add('hidden');
+    }
 
     const pdfTbody = document.getElementById('pdf_tbody_itens');
     pdfTbody.innerHTML = '';
@@ -1689,6 +1863,14 @@ ${textoPagamento}
 
   function carregarHistoricoLista() {
     const dados = localStorage.getItem('impact_haus_historico');
+    if (dados) {
+      try { return JSON.parse(dados); } catch(e) {}
+    }
+    return [];
+  }
+
+  function carregarNotasLista() {
+    const dados = localStorage.getItem('impact_haus_notas');
     if (dados) {
       try { return JSON.parse(dados); } catch(e) {}
     }
@@ -1785,6 +1967,7 @@ ${textoPagamento}
     const historico = carregarHistoricoLista();
     const nome = document.getElementById('cli_nome').value.trim() || "Cliente sem nome";
     const tel = document.getElementById('cli_tel').value.trim() || "";
+    const observacao = document.getElementById('orc_observacao').value.trim();
     const somaGeral = itensNoOrcamento.reduce((acc, it) => acc + it.subtotal, 0);
     const valorDesconto = (somaGeral * descontoAtual) / 100;
     const totalFinal = somaGeral - valorDesconto;
@@ -1808,6 +1991,7 @@ ${textoPagamento}
           boletoVencimento: boletoVenc,
           boletoStatus: boletoStat,
           desconto: descontoAtual,
+          observacao: observacao,
           itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
           total: totalFinal,
           data: dataHora
@@ -1828,6 +2012,7 @@ ${textoPagamento}
         boletoVencimento: boletoVenc,
         boletoStatus: boletoStat,
         desconto: descontoAtual,
+        observacao: observacao,
         itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
         total: totalFinal,
         data: dataHora
@@ -1846,14 +2031,40 @@ ${textoPagamento}
     atualizarContadorHistorico();
     verificarAlertasBoletos();
 
-    alert(`✅ Orçamento #${numSalvoAviso} salvo com sucesso no histórico!\n\nA tela foi reiniciada para o próximo atendimento.`);
-
+    alert(`✅ Pedido/Orçamento #${numSalvoAviso} salvo com sucesso!`);
     iniciarNovoOrcamento(false);
+  }
+
+  function converterOrcamentoEmNota() {
+    if (itensNoOrcamento.length === 0) {
+      alert("⚠️ Adicione ao menos um item para gerar uma nota!");
+      return;
+    }
+
+    const nome = document.getElementById('cli_nome').value.trim() || "Cliente Balcão";
+    const tel = document.getElementById('cli_tel').value.trim() || "";
+    const obs = document.getElementById('orc_observacao').value.trim();
+    const somaGeral = itensNoOrcamento.reduce((acc, it) => acc + it.subtotal, 0);
+    const totalFinal = somaGeral - ((somaGeral * descontoAtual) / 100);
+
+    let descItens = itensNoOrcamento.map((it, i) => `${it.qtd}x ${it.descricao}`).join(' | ');
+
+    document.getElementById('nota_edit_id').value = "";
+    document.getElementById('nota_numero').value = `NT-${numeroOrcamentoAtual}`;
+    document.getElementById('nota_cliente').value = nome;
+    document.getElementById('nota_telefone').value = tel;
+    document.getElementById('nota_valor').value = totalFinal.toFixed(2);
+    document.getElementById('nota_descricao').value = descItens;
+    document.getElementById('nota_observacao').value = obs;
+    document.getElementById('nota_status').value = 'pendente';
+    document.getElementById('titulo_modal_nota').innerText = "📝 Gerar Nota a partir do Orçamento";
+
+    document.getElementById('modalNota').classList.remove('hidden');
   }
 
   function iniciarNovoOrcamento(confirmar) {
     if (confirmar && itensNoOrcamento.length > 0) {
-      if (!confirm("Deseja iniciar um novo orçamento em branco? Certifique-se de salvar o atual primeiro.")) {
+      if (!confirm("Deseja iniciar um novo orçamento em branco?")) {
         return;
       }
     }
@@ -1862,6 +2073,7 @@ ${textoPagamento}
     numeroOrcamentoAtual = formatarNumeroOrcamento(getProximoNumero());
     document.getElementById('cli_nome').value = "";
     document.getElementById('cli_tel').value = "";
+    document.getElementById('orc_observacao').value = "";
     document.getElementById('alerta_cliente_existente').classList.add('hidden');
     descontoAtual = 0;
     
@@ -1882,34 +2094,247 @@ ${textoPagamento}
     atualizarResumo();
   }
 
-  function abrirHistorico() {
-    renderizarTabelaHistorico(carregarHistoricoLista());
+  // GERENCIAMENTO DE NOTAS
+  function abrirModalNovaNota() {
+    document.getElementById('nota_edit_id').value = "";
+    const proximaNotaNum = "NT-" + (carregarNotasLista().length + 1).toString().padStart(3, '0');
+    document.getElementById('nota_numero').value = proximaNotaNum;
+    document.getElementById('nota_cliente').value = document.getElementById('cli_nome').value.trim();
+    document.getElementById('nota_telefone').value = document.getElementById('cli_tel').value.trim();
+    document.getElementById('nota_valor').value = "";
+    document.getElementById('nota_descricao').value = "";
+    document.getElementById('nota_observacao').value = "";
+    document.getElementById('nota_status').value = "pendente";
+    document.getElementById('titulo_modal_nota').innerText = "📝 Lançar Nova Nota";
+    document.getElementById('modalNota').classList.remove('hidden');
+  }
+
+  function fecharModalNota() {
+    document.getElementById('modalNota').classList.add('hidden');
+  }
+
+  function salvarNota() {
+    const idExistente = document.getElementById('nota_edit_id').value;
+    const numero = document.getElementById('nota_numero').value.trim() || ("NT-" + Date.now().toString().slice(-4));
+    const cliente = document.getElementById('nota_cliente').value.trim() || "Cliente Balcão";
+    const telefone = document.getElementById('nota_telefone').value.trim() || "";
+    const valor = parseFloat(document.getElementById('nota_valor').value) || 0;
+    const descricao = document.getElementById('nota_descricao').value.trim() || "Serviço gráfico em geral";
+    const observacao = document.getElementById('nota_observacao').value.trim();
+    const status = document.getElementById('nota_status').value;
+    const dataHora = new Date().toLocaleString('pt-BR');
+    const dataRaw = Date.now();
+
+    let notas = carregarNotasLista();
+    let notaSalva;
+
+    if (idExistente) {
+      const idx = notas.findIndex(n => n.id === idExistente);
+      if (idx !== -1) {
+        notas[idx] = {
+          ...notas[idx],
+          numero,
+          cliente,
+          telefone,
+          valor,
+          descricao,
+          observacao,
+          status
+        };
+        notaSalva = notas[idx];
+      }
+    } else {
+      notaSalva = {
+        id: 'nota_' + Date.now(),
+        numero,
+        cliente,
+        telefone,
+        valor,
+        descricao,
+        observacao,
+        status,
+        data: dataHora,
+        dataRaw
+      };
+      notas.unshift(notaSalva);
+    }
+
+    localStorage.setItem('impact_haus_notas', JSON.stringify(notas));
+
+    if (db && notaSalva) {
+      db.collection('notas').doc(notaSalva.id).set(notaSalva);
+    }
+
+    fecharModalNota();
+    renderizarPainelNotasPendentes();
+    atualizarContadoresAbas();
+    if (!document.getElementById('modalHistorico').classList.contains('hidden')) {
+      filtrarHistorico();
+    }
+    alert("✅ Nota gravada com sucesso!");
+  }
+
+  function alternarStatusNota(id, novoStatus) {
+    let notas = carregarNotasLista();
+    const idx = notas.findIndex(n => n.id === id);
+    if (idx === -1) return;
+
+    notas[idx].status = novoStatus;
+    localStorage.setItem('impact_haus_notas', JSON.stringify(notas));
+
+    if (db) {
+      db.collection('notas').doc(id).update({ status: novoStatus });
+    }
+
+    renderizarPainelNotasPendentes();
+    atualizarContadoresAbas();
+    filtrarHistorico();
+  }
+
+  function renderizarPainelNotasPendentes() {
+    const notas = carregarNotasLista();
+    const pendentes = notas.filter(n => n.status === 'pendente');
+    const container = document.getElementById('lista_notas_pendentes');
+    const painel = document.getElementById('painel_notas_pendentes');
+    const badgeCount = document.getElementById('count-notas-pendentes');
+
+    badgeCount.innerText = pendentes.length;
+
+    if (pendentes.length === 0) {
+      painel.classList.add('hidden');
+      return;
+    }
+
+    painel.classList.remove('hidden');
+    container.innerHTML = '';
+
+    pendentes.forEach(n => {
+      const div = document.createElement('div');
+      div.className = 'nota-card-item';
+      
+      const obsHtml = n.observacao ? `<div class="nota-obs-tag">📌 <strong>Obs:</strong> ${n.observacao}</div>` : '';
+
+      div.innerHTML = `
+        <div style="flex: 1; min-width: 280px;">
+          <span class="badge-nota">${n.numero}</span> <strong>${n.cliente}</strong> (${n.telefone || 'Sem tel'}) 
+          — Total: <strong>${formatarMoeda(n.valor)}</strong>
+          <div style="font-size: 0.88rem; margin-top: 3px; color: #334155;">${n.descricao}</div>
+          ${obsHtml}
+        </div>
+        <div style="white-space: nowrap;">
+          <button type="button" class="action-btn done" onclick="alternarStatusNota('${n.id}', 'concluido')" title="Finalizar serviço">✓ Feito / Concluir</button>
+          <button type="button" class="action-btn edit" onclick="editarNotaModal('${n.id}')">✏️ Editar</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function editarNotaModal(id) {
+    const notas = carregarNotasLista();
+    const n = notas.find(item => item.id === id);
+    if (!n) return;
+
+    document.getElementById('nota_edit_id').value = n.id;
+    document.getElementById('nota_numero').value = n.numero;
+    document.getElementById('nota_cliente').value = n.cliente;
+    document.getElementById('nota_telefone').value = n.telefone || '';
+    document.getElementById('nota_valor').value = n.valor || '';
+    document.getElementById('nota_descricao').value = n.descricao || '';
+    document.getElementById('nota_observacao').value = n.observacao || '';
+    document.getElementById('nota_status').value = n.status || 'pendente';
+    document.getElementById('titulo_modal_nota').innerText = `✏️ Editar Nota ${n.numero}`;
+
+    document.getElementById('modalNota').classList.remove('hidden');
+  }
+
+  function excluirNota(id) {
+    if (confirm("Deseja realmente excluir esta nota?")) {
+      let notas = carregarNotasLista().filter(n => n.id !== id);
+      localStorage.setItem('impact_haus_notas', JSON.stringify(notas));
+      if (db) {
+        db.collection('notas').doc(id).delete();
+      }
+      renderizarPainelNotasPendentes();
+      atualizarContadoresAbas();
+      filtrarHistorico();
+    }
+  }
+
+  // HISTÓRICO COM ABAS
+  function abrirHistorico(aba = 'pedidos') {
+    alternarAbaHistorico(aba);
     document.getElementById('modalHistorico').classList.remove('hidden');
   }
 
   function fecharHistorico() {
     document.getElementById('modalHistorico').classList.add('hidden');
     verificarAlertasBoletos();
+    renderizarPainelNotasPendentes();
+  }
+
+  function alternarAbaHistorico(aba) {
+    abaAtualHistorico = aba;
+    const btnPed = document.getElementById('tab_btn_pedidos');
+    const btnNot = document.getElementById('tab_btn_notas');
+    const secPed = document.getElementById('aba_conteudo_pedidos');
+    const secNot = document.getElementById('aba_conteudo_notas');
+
+    if (aba === 'pedidos') {
+      btnPed.classList.add('active');
+      btnNot.classList.remove('active');
+      secPed.classList.remove('hidden');
+      secNot.classList.add('hidden');
+    } else {
+      btnPed.classList.remove('active');
+      btnNot.classList.add('active');
+      secPed.classList.add('hidden');
+      secNot.classList.remove('hidden');
+    }
+
+    filtrarHistorico();
+  }
+
+  function atualizarContadoresAbas() {
+    const pedidos = carregarHistoricoLista();
+    const notas = carregarNotasLista();
+    document.getElementById('count-historico').innerText = pedidos.length;
+    document.getElementById('tab_count_pedidos').innerText = pedidos.length;
+    document.getElementById('tab_count_notas').innerText = notas.length;
   }
 
   function filtrarHistorico() {
     const termo = document.getElementById('filtro_historico').value.trim().toLowerCase();
-    const historico = carregarHistoricoLista();
 
-    if (!termo) {
-      renderizarTabelaHistorico(historico);
-      return;
+    if (abaAtualHistorico === 'pedidos') {
+      const historico = carregarHistoricoLista();
+      if (!termo) {
+        renderizarTabelaHistorico(historico);
+        return;
+      }
+      const filtrados = historico.filter(orc => {
+        const numMatch = orc.numero.includes(termo) || String(orc.numRaw).includes(termo);
+        const nomeMatch = (orc.nome || "").toLowerCase().includes(termo);
+        const telMatch = (orc.tel || "").toLowerCase().includes(termo);
+        const obsMatch = (orc.observacao || "").toLowerCase().includes(termo);
+        return numMatch || nomeMatch || telMatch || obsMatch;
+      });
+      renderizarTabelaHistorico(filtrados);
+    } else {
+      const notas = carregarNotasLista();
+      if (!termo) {
+        renderizarTabelaNotas(notas);
+        return;
+      }
+      const filtradas = notas.filter(n => {
+        const numMatch = (n.numero || "").toLowerCase().includes(termo);
+        const cliMatch = (n.cliente || "").toLowerCase().includes(termo);
+        const descMatch = (n.descricao || "").toLowerCase().includes(termo);
+        const obsMatch = (n.observacao || "").toLowerCase().includes(termo);
+        return numMatch || cliMatch || descMatch || obsMatch;
+      });
+      renderizarTabelaNotas(filtradas);
     }
-
-    const filtrados = historico.filter(orc => {
-      const numMatch = orc.numero.includes(termo) || String(orc.numRaw).includes(termo);
-      const nomeMatch = (orc.nome || "").toLowerCase().includes(termo);
-      const telMatch = (orc.tel || "").toLowerCase().includes(termo);
-      const pagMatch = (orc.formaPagamento || "").toLowerCase().includes(termo);
-      return numMatch || nomeMatch || telMatch || pagMatch;
-    });
-
-    renderizarTabelaHistorico(filtrados);
   }
 
   function renderizarTabelaHistorico(lista) {
@@ -1917,7 +2342,7 @@ ${textoPagamento}
     tbody.innerHTML = '';
 
     if (lista.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum orçamento encontrado.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum pedido/orçamento encontrado.</td></tr>`;
       return;
     }
 
@@ -1932,11 +2357,13 @@ ${textoPagamento}
         infoPagamento = `Boleto (${vencStr}) ${statusBadge}`;
       }
 
+      const obsTooltip = orc.observacao ? `title="Obs: ${orc.observacao}"` : '';
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong class="badge-num">#${orc.numero}</strong></td>
         <td>${orc.data.split(' ')[0]}</td>
-        <td><strong>${orc.nome}</strong></td>
+        <td><strong ${obsTooltip}>${orc.nome}</strong></td>
         <td>${orc.tel || '-'}</td>
         <td>${infoPagamento}</td>
         <td><strong>${formatarMoeda(orc.total)}</strong></td>
@@ -1953,6 +2380,42 @@ ${textoPagamento}
     });
   }
 
+  function renderizarTabelaNotas(lista) {
+    const tbody = document.getElementById('tbody-historico-notas');
+    tbody.innerHTML = '';
+
+    if (lista.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhuma nota encontrada.</td></tr>`;
+      return;
+    }
+
+    lista.forEach(n => {
+      const statusBadge = n.status === 'concluido'
+        ? `<span class="badge-status-pago">Concluído</span>`
+        : `<span class="badge-status-pendente">Pendente</span>`;
+
+      const obsInfo = n.observacao ? `<br><small style="color: #64748b;">Obs: ${n.observacao}</small>` : '';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge-nota">${n.numero}</span></td>
+        <td>${(n.data || '').split(' ')[0]}</td>
+        <td><strong>${n.cliente}</strong><br><small>${n.telefone || '-'}</small></td>
+        <td>${n.descricao}${obsInfo}</td>
+        <td><strong>${formatarMoeda(n.valor)}</strong></td>
+        <td>${statusBadge}</td>
+        <td class="actions">
+          ${n.status === 'pendente' 
+            ? `<button type="button" class="action-btn done" onclick="alternarStatusNota('${n.id}', 'concluido')" title="Marcar como Feito">✓ Feito</button>` 
+            : `<button type="button" class="action-btn" onclick="alternarStatusNota('${n.id}', 'pendente')" title="Voltar a Pendente">↩ Pendente</button>`}
+          <button type="button" class="action-btn edit" onclick="editarNotaModal('${n.id}')" title="Editar Nota">✏️</button>
+          <button type="button" class="action-btn del" onclick="excluirNota('${n.id}')" title="Excluir">🗑️</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
   function carregarOrcamentoDoHistorico(id) {
     const historico = carregarHistoricoLista();
     const orc = historico.find(o => o.id === id);
@@ -1962,6 +2425,7 @@ ${textoPagamento}
     numeroOrcamentoAtual = orc.numero;
     document.getElementById('cli_nome').value = orc.nome === "Cliente sem nome" ? "" : orc.nome;
     document.getElementById('cli_tel').value = orc.tel || "";
+    document.getElementById('orc_observacao').value = orc.observacao || "";
 
     perfilAtual = orc.perfil || 'novo_cliente';
     const perfilBtns = document.querySelectorAll('#group-cliente .btn-toggle');
@@ -2014,6 +2478,8 @@ ${textoPagamento}
       textoPag = `💳 *Pagamento:* Boleto Bancário (Vencimento: ${vStr}) [${orc.boletoStatus === 'pago' ? 'Pago' : 'Pendente'}]`;
     }
 
+    let obsTxt = orc.observacao ? `\n📌 *Obs:* ${orc.observacao}\n` : "";
+
     const textoFinal = 
 `📄 *ORÇAMENTO DE IMPRESSÃO #${orc.numero}*
 ----------------------------------------
@@ -2024,7 +2490,7 @@ ${textoPagamento}
 ${textoItens.trim()}
 ----------------------------------------
 💰 *VALOR TOTAL:* ${formatarMoeda(orc.total)}
-${textoPag}
+${textoPag}${obsTxt}
 ----------------------------------------
 *Gráfica Impact Haus*`;
 
@@ -2044,14 +2510,13 @@ ${textoPag}
       }
 
       renderizarTabelaHistorico(historico);
-      atualizarContadorHistorico();
+      atualizarContadoresAbas();
       verificarAlertasBoletos();
     }
   }
 
   function atualizarContadorHistorico() {
-    const historico = carregarHistoricoLista();
-    document.getElementById('count-historico').innerText = historico.length;
+    atualizarContadoresAbas();
   }
 
   function abrirModalPrecos() {
@@ -2124,14 +2589,17 @@ ${textoPag}
   window.onclick = function(event) {
     const modalPrecos = document.getElementById('modalPrecos');
     const modalHistorico = document.getElementById('modalHistorico');
+    const modalNota = document.getElementById('modalNota');
     if (event.target === modalPrecos) fecharModalPrecos();
     if (event.target === modalHistorico) fecharHistorico();
+    if (event.target === modalNota) fecharModalNota();
   };
 
   window.onload = function() {
     atualizarTagNumero();
     atualizarContadorHistorico();
     verificarAlertasBoletos();
+    renderizarPainelNotasPendentes();
     atualizarResumo();
   };
 </script>
