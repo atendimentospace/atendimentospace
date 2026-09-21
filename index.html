@@ -2335,17 +2335,17 @@ ${textoPagamento}${linhaObs}
     document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
   }
 
-  // DISPARO DE E-MAIL 100% SILENCIOSO VIA API HTTP (SEM POPUPS NEM APLICATIVOS)
+  // DISPARO DE E-MAIL SILENCIOSO VIA API HTTP
   async function enviarEmailSilenciosoEmailJS(nota) {
     const nomeCli = nota.cliente || "Cliente Balcão";
     const numTel = nota.telefone || "Sem telefone";
     const numNota = nota.numero || "Sem número";
     const docCli = nota.documento || "Não informado";
 
-    // ASSUNTO: Começa rigorosamente com NOTA/BOLETO - Nome do cliente - nota/boleto - telefone
+    // ASSUNTO: Começa sempre com NOTA/BOLETO
     const assuntoFormatado = `NOTA/BOLETO - ${nomeCli} - ${numNota} - ${numTel}`;
 
-    // DESCRIÇÃO: Repete o título (sem NOTA/BOLETO) e adiciona descrição, número da nota e observação
+    // DESCRIÇÃO: Repete o título SEM "NOTA/BOLETO", seguido de número da nota e observação/descrição
     let corpoDescricao = `${nomeCli} - ${numNota} - ${numTel}\n`;
     corpoDescricao += `==========================================\n`;
     corpoDescricao += `NÚMERO DA NOTA: ${numNota}\n`;
