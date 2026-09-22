@@ -166,6 +166,7 @@
     .action-btn.done { color: #047857; background: #d1fae5; border-color: #6ee7b7; font-weight: bold; }
     .action-btn.link-btn { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
     .action-btn.email { color: #7c3aed; background: #f5f3ff; border-color: #ddd6fe; }
+    .action-btn.anexo-btn { color: #15803d; background: #f0fdf4; border-color: #86efac; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
 
     .result-box {
       margin-top: 20px; background: var(--primary-light); border: 1px dashed var(--primary);
@@ -206,6 +207,10 @@
     .info-aproveitamento-box {
       background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 10px 14px;
       margin-top: 10px; font-size: 0.88rem; color: #166534; line-height: 1.4;
+    }
+
+    .box-anexo-drive {
+      background: #f8fafc; border: 1.5px dashed #cbd5e1; padding: 12px; border-radius: 8px; margin-top: 15px;
     }
 
     .modal-overlay {
@@ -301,7 +306,7 @@
   <div id="login-feedback" style="margin-top: 15px; font-size: 0.85rem; color: #b91c1c; display: none;"></div>
 </div>
 
-<!-- PAINEL LATERAL ESQUERDO (FORA DO QUADRO PRINCIPAL) -->
+<!-- PAINEL LATERAL ESQUERDO -->
 <div class="painel-lateral-esquerdo">
   <!-- PAINEL DE NOTAS PENDENTES -->
   <div id="painel_notas_pendentes" class="painel-notas-box hidden">
@@ -639,6 +644,17 @@
   <label for="orc_observacao">Observações do Pedido / Acabamento / Detalhes de Produção:</label>
   <textarea id="orc_observacao" placeholder="Ex: Refilar sem borda branca, cliente traz arquivo em PDF/X-1a, embalar em pacotes de 100 unidades..." oninput="atualizarResumo(); autoSalvarRascunho();"></textarea>
 
+  <!-- CAMPO DE ANEXO DO DRIVE (PRINTS / ARTE) -->
+  <div class="box-anexo-drive">
+    <label style="margin-top:0; color:#0f766e;">📎 Anexar Arte / Print / PDF ao Pedido (Google Drive):</label>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+      <input type="file" id="input_anexo_drive" accept="image/*,.pdf" style="font-size:0.9rem;" onchange="gerenciarSelecaoArquivoAnexo(this)">
+      <span style="font-size:0.85rem; color:#64748b;">(Dica: Você também pode dar <strong>Ctrl + V</strong> para colar um print da tela!)</span>
+    </div>
+    <div id="status_upload_anexo" style="font-size:0.85rem; margin-top:8px; font-weight:600;"></div>
+    <input type="hidden" id="link_anexo_drive_salvo">
+  </div>
+
   <!-- Desconto -->
   <div id="box-desconto-container">
     <label style="margin-top: 15px;">Aplicar Desconto Promocional (Sobre o Total):</label>
@@ -655,7 +671,7 @@
     <div class="btn-group-actions">
       <button type="button" class="btn-copy" onclick="copiarOrcamento()">📋 Copiar Texto</button>
       <button type="button" class="btn-pdf" id="btn_baixar_pdf" onclick="imprimirPDF()">📄 Gerar PDF</button>
-      <button type="button" class="btn-save-budget" onclick="salvarOrcamentoNoHistorico()">💾 Salvar Pedido</button>
+      <button type="button" class="btn-save-budget" id="btn_salvar_pedido_main" onclick="salvarOrcamentoNoHistorico()">💾 Salvar Pedido</button>
       <button type="button" class="btn-make-note" id="btn_gerar_nota_preview" onclick="converterOrcamentoEmNota()">📝 Gerar Nota</button>
     </div>
   </div>
@@ -729,7 +745,7 @@
   </div>
 </div>
 
-<!-- MODAL DE HISTÓRICO COM ABAS (PEDIDOS VS NOTAS) -->
+<!-- MODAL DE HISTÓRICO COM ABAS -->
 <div id="modalHistorico" class="modal-overlay hidden">
   <div class="modal-content">
     <div class="modal-header">
@@ -790,7 +806,7 @@
   </div>
 </div>
 
-<!-- MODAL PARA CRIAR / EDITAR NOTA COM AUTOCOMPLETE DE PEDIDO E CAMPOS SEPARADOS -->
+<!-- MODAL PARA CRIAR / EDITAR NOTA -->
 <div id="modalNota" class="modal-overlay hidden">
   <div class="modal-content" style="max-width: 620px;">
     <div class="modal-header">
@@ -800,7 +816,6 @@
 
     <input type="hidden" id="nota_edit_id">
 
-    <!-- BUSCA DIGITÁVEL DE PEDIDO -->
     <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 15px; position: relative;">
       <label style="margin-top: 0; color: #0f766e;">🔗 Vincular a um Pedido / Orçamento existente:</label>
       <input type="hidden" id="nota_vinculo_pedido">
@@ -817,7 +832,6 @@
       </small>
     </div>
 
-    <!-- CAMPOS SEPARADOS: NÚMERO DA NOTA E CPF/CNPJ -->
     <div class="grid-2">
       <div>
         <label>Número da Nota:</label>
@@ -846,12 +860,12 @@
 
     <div>
       <label>Descrição do Serviço / Itens:</label>
-      <textarea id="nota_descricao" placeholder="Ex: 500 cartões de visita 4x0 couchê 300g com laminação fosca..." style="min-height: 75px;"></textarea>
+      <textarea id="nota_descricao" placeholder="Ex: 500 cartões de visita 4x0 couchê 300g..." style="min-height: 75px;"></textarea>
     </div>
 
     <div>
       <label>Observações Adicionais:</label>
-      <textarea id="nota_observacao" placeholder="Ex: Prazo para amanhã às 16h, acabamento refilado, entregar para Michael..."></textarea>
+      <textarea id="nota_observacao" placeholder="Ex: Prazo para amanhã às 16h, entregar para Michael..."></textarea>
     </div>
 
     <div>
@@ -862,7 +876,6 @@
       </select>
     </div>
 
-    <!-- OPÇÃO DE ENVIO DE E-MAIL SILENCIOSO -->
     <div style="background: #fdf4ff; border: 1px solid #f0abfc; padding: 10px 12px; border-radius: 8px; margin-top: 14px;">
       <label class="checkbox-inline" style="color: #86198f; margin: 0; font-size: 0.88rem;">
         <input type="checkbox" id="chk_enviar_email_nota" checked> 
@@ -909,8 +922,9 @@
 
 <script>
   // ==========================================
-  // CONFIGURAÇÕES DO EMAILJS
+  // CONFIGURAÇÕES DE WEBHOOKS & EMAILJS
   // ==========================================
+  const URL_WEBHOOK_DRIVE = "https://script.google.com/macros/s/AKfycbz0HAc3RRZtgvM4sUtOR7e8-44zMN8XoBNrxtHnxrt1odU_kgSwcfTfK14HNiiNv0I4cw/exec";
   const EMAILJS_PUBLIC_KEY = "39cmhvk-G7te_79ye"; 
   const EMAILJS_SERVICE_ID = "service_jlv0mfb"; 
   const EMAILJS_TEMPLATE_ID = "template_o9dbngm";
@@ -927,7 +941,7 @@
   }
 
   // ==========================================
-  // CONFIGURAÇÕES DO FIREBASE E PERMISSÕES
+  // CONFIGURAÇÕES DO FIREBASE
   // ==========================================
   const firebaseConfig = {
     apiKey: "AIzaSyD6sCVnMGvr20_I48FUz6dDlFr3uB0v3hk",
@@ -1153,6 +1167,78 @@
   let orcamentoAtualId = null;
   let notaVinculadaAoOrcamentoAtual = null;
 
+  let arquivoAnexoSelecionado = null;
+
+  // LÓGICA DE UPLOAD PARA GOOGLE DRIVE
+  function gerenciarSelecaoArquivoAnexo(inputElement) {
+    if (inputElement.files && inputElement.files[0]) {
+      arquivoAnexoSelecionado = inputElement.files[0];
+      const statusDiv = document.getElementById('status_upload_anexo');
+      statusDiv.style.color = '#15803d';
+      statusDiv.innerHTML = `📄 Arquivo carregado: <strong>${arquivoAnexoSelecionado.name}</strong> (Será enviado ao salvar)`;
+    }
+  }
+
+  // EVENTO DE COLAR PRINT DA TELA (CTRL + V)
+  window.addEventListener('paste', e => {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (let item of items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const blob = item.getAsFile();
+        const nomeArquivo = `print_${Date.now()}.png`;
+        arquivoAnexoSelecionado = new File([blob], nomeArquivo, { type: blob.type });
+        
+        const statusDiv = document.getElementById('status_upload_anexo');
+        statusDiv.style.color = '#15803d';
+        statusDiv.innerHTML = `🖼️ Print capturado da área de transferência: <strong>${nomeArquivo}</strong>`;
+        break;
+      }
+    }
+  });
+
+  async function uploadArquivoParaDrive(file) {
+    if (!file) return null;
+
+    const statusDiv = document.getElementById('status_upload_anexo');
+    statusDiv.style.color = '#0284c7';
+    statusDiv.innerHTML = `⏳ Enviando arquivo para o Google Drive... Aguarde...`;
+
+    const base64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.readAsDataURL(file);
+    });
+
+    const payload = {
+      fileName: `${numeroOrcamentoAtual}_${Date.now()}_${file.name}`,
+      mimeType: file.type,
+      fileBase64: base64
+    };
+
+    try {
+      const res = await fetch(URL_WEBHOOK_DRIVE, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      
+      if (json.status === 'success') {
+        statusDiv.style.color = '#15803d';
+        statusDiv.innerHTML = `✅ Arquivo hospedado no Drive com sucesso!`;
+        return json.fileUrl;
+      } else {
+        statusDiv.style.color = '#b91c1c';
+        statusDiv.innerHTML = `⚠️ Erro ao enviar para o Drive: ${json.message}`;
+        return null;
+      }
+    } catch(e) {
+      console.error("Erro na comunicação com o Drive:", e);
+      statusDiv.style.color = '#b91c1c';
+      statusDiv.innerHTML = `⚠️ Falha de conexão ao enviar para o Drive.`;
+      return null;
+    }
+  }
+
   // AUTO-SALVAMENTO DO ORÇAMENTO (RASCUNHO)
   function autoSalvarRascunho() {
     const rascunho = {
@@ -1166,7 +1252,8 @@
       descontoAtual,
       itensNoOrcamento,
       orcamentoAtualId,
-      numeroOrcamentoAtual
+      numeroOrcamentoAtual,
+      linkAnexoSalvo: document.getElementById('link_anexo_drive_salvo').value
     };
     localStorage.setItem('impact_haus_rascunho_orcamento', JSON.stringify(rascunho));
   }
@@ -1197,6 +1284,11 @@
       if (data.numeroOrcamentoAtual) {
         numeroOrcamentoAtual = data.numeroOrcamentoAtual;
         atualizarTagNumero();
+      }
+
+      if (data.linkAnexoSalvo) {
+        document.getElementById('link_anexo_drive_salvo').value = data.linkAnexoSalvo;
+        document.getElementById('status_upload_anexo').innerHTML = `📎 Anexo anexado: <a href="${data.linkAnexoSalvo}" target="_blank">Ver Arquivo no Drive</a>`;
       }
 
       renderizarTabela();
@@ -2173,6 +2265,8 @@ ${textoPagamento}${linhaObs}
         msgVenc = `<span style="font-weight:bold;">Vence em ${b.diasRestantes} dia(s) (${b.vencFormatado})</span>`;
       }
 
+      const btnAnexo = b.linkAnexo Drive ? `<a href="${b.linkAnexoDrive}" target="_blank" class="action-btn anexo-btn" title="Abrir Anexo no Drive">📎 Anexo</a>` : '';
+
       const itemDiv = document.createElement('div');
       itemDiv.className = 'alerta-item';
       itemDiv.innerHTML = `
@@ -2180,6 +2274,7 @@ ${textoPagamento}${linhaObs}
           <strong>#${b.numero} - ${b.nome}</strong> (${b.tel || 'Sem telefone'}) — Total: <strong>${formatarMoeda(b.total)}</strong> — ${msgVenc}
         </div>
         <div>
+          ${btnAnexo}
           <button type="button" class="action-btn pay" onclick="darBaixaBoleto('${b.id}')">Marcar como Pago</button>
           <button type="button" class="action-btn edit" onclick="carregarOrcamentoDoHistorico('${b.id}')">Ver Detalhes</button>
         </div>
@@ -2209,10 +2304,23 @@ ${textoPagamento}${linhaObs}
     }
   }
 
-  function salvarOrcamentoNoHistorico() {
+  async function salvarOrcamentoNoHistorico() {
     if (itensNoOrcamento.length === 0) {
       alert("⚠️ Adicione itens antes de salvar o orçamento!");
       return;
+    }
+
+    const btnSalvarMain = document.getElementById('btn_salvar_pedido_main');
+    btnSalvarMain.innerText = "⏳ Enviando anexo e salvando...";
+    btnSalvarMain.disabled = true;
+
+    let urlDriveFinal = document.getElementById('link_anexo_drive_salvo').value || null;
+
+    if (arquivoAnexoSelecionado) {
+      const resUpload = await uploadArquivoParaDrive(arquivoAnexoSelecionado);
+      if (resUpload) {
+        urlDriveFinal = resUpload;
+      }
     }
 
     const historico = carregarHistoricoLista();
@@ -2246,7 +2354,8 @@ ${textoPagamento}${linhaObs}
           observacao: observacao,
           itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
           total: totalFinal,
-          data: dataHora
+          data: dataHora,
+          linkAnexoDrive: urlDriveFinal
         };
         orcamentoSalvar = historico[indexExistente];
         numSalvoAviso = historico[indexExistente].numero;
@@ -2267,7 +2376,8 @@ ${textoPagamento}${linhaObs}
         observacao: observacao,
         itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
         total: totalFinal,
-        data: dataHora
+        data: dataHora,
+        linkAnexoDrive: urlDriveFinal
       };
       historico.unshift(orcamentoSalvar);
       localStorage.setItem('impact_haus_seq_num', proxNum.toString());
@@ -2279,6 +2389,9 @@ ${textoPagamento}${linhaObs}
     if (db && orcamentoSalvar) {
       db.collection('orcamentos').doc(orcamentoSalvar.id).set(orcamentoSalvar);
     }
+
+    btnSalvarMain.innerText = "💾 Salvar Pedido";
+    btnSalvarMain.disabled = false;
 
     atualizarContadorHistorico();
     verificarAlertasBoletos();
@@ -2303,42 +2416,8 @@ ${textoPagamento}${linhaObs}
       const confirmar = confirm("Este orçamento ainda não foi salvo como pedido. Deseja salvar o pedido agora e gerar a nota vinculada a ele?");
       if (!confirmar) return;
 
-      const historico = carregarHistoricoLista();
-      const nome = document.getElementById('cli_nome').value.trim() || "Cliente Balcão";
-      const tel = document.getElementById('cli_tel').value.trim() || "";
-      const observacao = document.getElementById('orc_observacao').value.trim();
-      const somaGeral = itensNoOrcamento.reduce((acc, it) => acc + it.subtotal, 0);
-      const valorDesconto = (somaGeral * descontoAtual) / 100;
-      const totalFinal = somaGeral - valorDesconto;
-      const proxNum = getProximoNumero();
-
-      const novoOrc = {
-        id: 'orc_' + Date.now(),
-        numero: formatarNumeroOrcamento(proxNum),
-        numRaw: proxNum,
-        nome,
-        tel,
-        perfil: perfilAtual,
-        formaPagamento: formaPagamentoAtual,
-        boletoVencimento: formaPagamentoAtual === 'boleto' ? document.getElementById('boleto_vencimento').value : null,
-        boletoStatus: formaPagamentoAtual === 'boleto' ? document.getElementById('boleto_status').value : null,
-        desconto: descontoAtual,
-        observacao: observacao,
-        itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
-        total: totalFinal,
-        data: new Date().toLocaleString('pt-BR')
-      };
-
-      historico.unshift(novoOrc);
-      localStorage.setItem('impact_haus_historico', JSON.stringify(historico));
-      localStorage.setItem('impact_haus_seq_num', proxNum.toString());
-      if (db) db.collection('orcamentos').doc(novoOrc.id).set(novoOrc);
-
-      orcamentoAtualId = novoOrc.id;
-      numeroOrcamentoAtual = novoOrc.numero;
-      atualizarTagNumero();
-      atualizarContadorHistorico();
-      limparRascunhoNavegador();
+      salvarOrcamentoNoHistorico();
+      return;
     }
 
     const nome = document.getElementById('cli_nome').value.trim() || "Cliente Balcão";
@@ -2374,12 +2453,16 @@ ${textoPagamento}${linhaObs}
     itensNoOrcamento = [];
     orcamentoAtualId = null;
     notaVinculadaAoOrcamentoAtual = null;
+    arquivoAnexoSelecionado = null;
     document.getElementById('banner_nota_vinculada').classList.add('hidden');
 
     numeroOrcamentoAtual = formatarNumeroOrcamento(getProximoNumero());
     document.getElementById('cli_nome').value = "";
     document.getElementById('cli_tel').value = "";
     document.getElementById('orc_observacao').value = "";
+    document.getElementById('input_anexo_drive').value = "";
+    document.getElementById('link_anexo_drive_salvo').value = "";
+    document.getElementById('status_upload_anexo').innerHTML = "";
     document.getElementById('alerta_cliente_existente').classList.add('hidden');
     descontoAtual = 0;
     
@@ -2986,6 +3069,7 @@ ${textoPagamento}${linhaObs}
       }
 
       const obsTooltip = orc.observacao ? `title="Obs: ${orc.observacao}"` : '';
+      const btnAnexo = orc.linkAnexoDrive ? `<a href="${orc.linkAnexoDrive}" target="_blank" class="action-btn anexo-btn" title="Abrir Anexo no Google Drive">📎 Anexo</a>` : '';
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -2997,6 +3081,7 @@ ${textoPagamento}${linhaObs}
         <td><strong>${formatarMoeda(orc.total)}</strong></td>
         ${vinculoNotaTd}
         <td class="actions">
+          ${btnAnexo}
           ${(orc.formaPagamento === 'boleto' && orc.boletoStatus === 'pendente' && ehAdmin)
             ? `<button type="button" class="action-btn pay" onclick="darBaixaBoleto('${orc.id}')" title="Marcar boleto como pago">✓ Pago</button>` 
             : ''}
@@ -3073,6 +3158,14 @@ ${textoPagamento}${linhaObs}
     document.getElementById('cli_tel').value = orc.tel || "";
     document.getElementById('orc_observacao').value = orc.observacao || "";
 
+    if (orc.linkAnexoDrive) {
+      document.getElementById('link_anexo_drive_salvo').value = orc.linkAnexoDrive;
+      document.getElementById('status_upload_anexo').innerHTML = `📎 Anexo anexado: <a href="${orc.linkAnexoDrive}" target="_blank">Ver Arquivo no Drive</a>`;
+    } else {
+      document.getElementById('link_anexo_drive_salvo').value = "";
+      document.getElementById('status_upload_anexo').innerHTML = "";
+    }
+
     perfilAtual = orc.perfil || 'novo_cliente';
     const perfilBtns = document.querySelectorAll('#group-cliente .btn-toggle');
     perfilBtns.forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes(`'${perfilAtual}'`)));
@@ -3127,6 +3220,7 @@ ${textoPagamento}${linhaObs}
     }
 
     let obsTxt = orc.observacao ? `\n📌 *Obs:* ${orc.observacao}\n` : "";
+    let anexoTxt = orc.linkAnexoDrive ? `\n📎 *Arte/Anexo:* ${orc.linkAnexoDrive}\n` : "";
 
     const textoFinal = 
 `📄 *ORÇAMENTO DE IMPRESSÃO #${orc.numero}*
@@ -3138,7 +3232,7 @@ ${textoPagamento}${linhaObs}
 ${textoItens.trim()}
 ----------------------------------------
 💰 *VALOR TOTAL:* ${formatarMoeda(orc.total)}
-${textoPag}${obsTxt}
+${textoPag}${obsTxt}${anexoTxt}
 ----------------------------------------
 *Gráfica Impact Haus*`;
 
@@ -3244,7 +3338,6 @@ ${textoPag}${obsTxt}
     }
   }
 
-  // PROTEÇÃO CONTRA FECHAMENTO ACIDENTAL AO CLICAR FORA
   window.onclick = function(event) {
     const dropdownSugestoes = document.getElementById('dropdown_sugestoes_pedidos');
     const inputBusca = document.getElementById('input_busca_pedido_vinculo');
