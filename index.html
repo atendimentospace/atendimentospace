@@ -751,7 +751,7 @@
       <table class="table-custom">
         <thead>
           <tr>
-            <th>Nº</th>
+            <th>Nº Pedido</th>
             <th>Data</th>
             <th>Cliente</th>
             <th>Telefone</th>
@@ -813,15 +813,15 @@
       <div id="dropdown_sugestoes_pedidos" class="dropdown-sugestoes hidden"></div>
       
       <small id="legenda_vinculo_pedido" style="color: #64748b; font-size: 0.8rem; display: block; margin-top: 5px;">
-        💡 Digite para pesquisar. Se não escolher nenhum, a nota usará a numeração padrão.
+        💡 Digite para pesquisar. Se não escolher nenhum, a nota será lançada como <strong>Avulsa</strong>.
       </small>
     </div>
 
     <!-- CAMPOS SEPARADOS: NÚMERO DA NOTA E CPF/CNPJ -->
     <div class="grid-2">
       <div>
-        <label>Número da Nota / Pedido:</label>
-        <input type="text" id="nota_numero" placeholder="Ex: #001">
+        <label>Número da Nota:</label>
+        <input type="text" id="nota_numero" placeholder="Ex: NT-001">
       </div>
       <div>
         <label>CPF / CNPJ:</label>
@@ -2352,8 +2352,7 @@ ${textoPagamento}${linhaObs}
     configurarVinculoPedidoPorId(orcamentoAtualId);
 
     document.getElementById('nota_edit_id').value = "";
-    // AJUSTADO: Usa exatamente a mesma numeração do Pedido
-    document.getElementById('nota_numero').value = `#${numeroOrcamentoAtual}`;
+    document.getElementById('nota_numero').value = `NT-${(carregarNotasLista().length + 1).toString().padStart(3, '0')}`;
     document.getElementById('nota_documento').value = "";
     document.getElementById('nota_cliente').value = nome;
     document.getElementById('nota_telefone').value = tel;
@@ -2461,9 +2460,6 @@ ${textoPagamento}${linhaObs}
     document.getElementById('input_busca_pedido_vinculo').value = `Pedido #${p.numero} - ${p.nome || 'Balcão'} (${formatarMoeda(p.total)})`;
     document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
 
-    // AJUSTADO: Alinha a numeração da Nota diretamente à do Pedido selecionado
-    document.getElementById('nota_numero').value = `#${p.numero}`;
-
     const legenda = document.getElementById('legenda_vinculo_pedido');
     legenda.innerHTML = `✅ <strong>Vinculado ao Pedido #${p.numero}</strong>. Os dados foram preenchidos automaticamente.`;
     legenda.style.color = '#15803d';
@@ -2503,9 +2499,8 @@ ${textoPagamento}${linhaObs}
   function desvincularPedidoDaNota() {
     document.getElementById('nota_vinculo_pedido').value = "";
     document.getElementById('input_busca_pedido_vinculo').value = "";
-    document.getElementById('nota_numero').value = `#${numeroOrcamentoAtual}`;
     const legenda = document.getElementById('legenda_vinculo_pedido');
-    legenda.innerHTML = `💡 Digite para pesquisar. Se não escolher nenhum, a nota usará a numeração padrão.`;
+    legenda.innerHTML = `💡 Digite para pesquisar. Se não escolher nenhum, a nota será lançada como <strong>Avulsa</strong>.`;
     legenda.style.color = '#64748b';
     document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
   }
@@ -2514,14 +2509,14 @@ ${textoPagamento}${linhaObs}
   async function enviarEmailSilenciosoEmailJS(nota) {
     const nomeCli = nota.cliente || "Cliente Balcão";
     const numTel = nota.telefone || "Sem telefone";
-    const numNota = nota.numero || `#${numeroOrcamentoAtual}`;
+    const numNota = nota.numero || "Sem número";
     const docCli = nota.documento || "Não informado";
 
-    const assuntoFormatado = `PEDIDO/NOTA - ${nomeCli} - ${numNota} - ${numTel}`;
+    const assuntoFormatado = `NOTA/BOLETO - ${nomeCli} - ${numNota} - ${numTel}`;
 
     let corpoDescricao = `${nomeCli} - ${numNota} - ${numTel}\n`;
     corpoDescricao += `==========================================\n`;
-    corpoDescricao += `NÚMERO DO PEDIDO/NOTA: ${numNota}\n`;
+    corpoDescricao += `NÚMERO DA NOTA: ${numNota}\n`;
     corpoDescricao += `CPF / CNPJ: ${docCli}\n`;
     corpoDescricao += `VALOR TOTAL: ${formatarMoeda(nota.valor)}\n`;
     corpoDescricao += `------------------------------------------\n`;
@@ -2573,7 +2568,8 @@ ${textoPagamento}${linhaObs}
     }
 
     document.getElementById('nota_edit_id').value = "";
-    document.getElementById('nota_numero').value = `#${numeroOrcamentoAtual}`;
+    const proximaNotaNum = "NT-" + (carregarNotasLista().length + 1).toString().padStart(3, '0');
+    document.getElementById('nota_numero').value = proximaNotaNum;
     document.getElementById('nota_documento').value = "";
     
     document.getElementById('nota_cliente').value = document.getElementById('cli_nome').value.trim();
@@ -2603,7 +2599,7 @@ ${textoPagamento}${linhaObs}
 
     const btnSalvar = document.getElementById('btn_salvar_nota_submit');
     const idExistente = document.getElementById('nota_edit_id').value;
-    const numero = document.getElementById('nota_numero').value.trim() || (`#${numeroOrcamentoAtual}`);
+    const numero = document.getElementById('nota_numero').value.trim() || ("NT-" + Date.now().toString().slice(-4));
     const documento = document.getElementById('nota_documento').value.trim() || "";
     const cliente = document.getElementById('nota_cliente').value.trim() || "Cliente Balcão";
     const telefone = document.getElementById('nota_telefone').value.trim() || "";
