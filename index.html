@@ -300,9 +300,11 @@
 <div id="tela-login">
   <h2>Acesso do Sistema</h2>
   <p>Entre com seu e-mail e senha cadastrados no Firebase.</p>
-  <input type="text" id="login_email" placeholder="E-mail">
-  <input type="password" id="login_senha" placeholder="Sua Senha">
-  <button type="button" id="btn-entrar" onclick="fazerLogin()">Entrar no Sistema</button>
+  <form onsubmit="fazerLogin(event)">
+    <input type="text" id="login_email" placeholder="E-mail" required autocomplete="username">
+    <input type="password" id="login_senha" placeholder="Sua Senha" required autocomplete="current-password">
+    <button type="submit" id="btn-entrar">Entrar no Sistema</button>
+  </form>
   <div id="login-feedback" style="margin-top: 15px; font-size: 0.85rem; color: #b91c1c; display: none;"></div>
 </div>
 
@@ -971,37 +973,55 @@
     console.error("Erro na inicialização do Firebase:", e);
   }
 
-  function fazerLogin() {
+  function fazerLogin(event) {
+    if (event) event.preventDefault();
+
     const email = document.getElementById('login_email').value.trim().toLowerCase();
     const senha = document.getElementById('login_senha').value;
     const feedback = document.getElementById('login-feedback');
     const btn = document.getElementById('btn-entrar');
 
     if (!email || !senha) {
-      alert("Por favor, preencha o e-mail e a senha.");
+      feedback.style.display = 'block';
+      feedback.innerText = "Por favor, preencha o e-mail e a senha.";
       return;
     }
 
     if (!EMAILS_PERMITIDOS.includes(email)) {
       feedback.style.display = 'block';
-      feedback.innerText = "Acesso negado: Este e-mail não tem permissão de acesso.";
+      feedback.innerText = "Acesso negado: Este e-mail não tem permissão no sistema.";
       return;
     }
 
-    btn.innerText = "⏳ Entrando...";
+    btn.innerText = "⏳ Autenticando...";
     btn.disabled = true;
     feedback.style.display = 'none';
 
+    if (!auth) {
+      btn.innerText = "Entrar no Sistema";
+      btn.disabled = false;
+      feedback.style.display = 'block';
+      feedback.innerText = "Erro: Firebase não inicializou corretamente.";
+      return;
+    }
+
     auth.signInWithEmailAndPassword(email, senha)
-      .then(() => {})
+      .then(() => {
+        // Autenticado com sucesso! O listener auth.onAuthStateChanged cuidará da transição da tela.
+      })
       .catch((error) => {
         btn.innerText = "Entrar no Sistema";
         btn.disabled = false;
         feedback.style.display = 'block';
-        if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-          feedback.innerText = "E-mail ou senha incorretos.";
+        
+        console.error("Erro ao autenticar:", error);
+
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+          feedback.innerText = "E-mail ou senha incorretos. Verifique os dados.";
+        } else if (error.code === 'auth/operation-not-allowed') {
+          feedback.innerText = "Erro: O método de e-mail/senha não está ativado no Console do Firebase!";
         } else {
-          feedback.innerText = "Erro ao autenticar: " + error.message;
+          feedback.innerText = "Erro ao entrar: " + error.message;
         }
       });
   }
@@ -2265,7 +2285,7 @@ ${textoPagamento}${linhaObs}
         msgVenc = `<span style="font-weight:bold;">Vence em ${b.diasRestantes} dia(s) (${b.vencFormatado})</span>`;
       }
 
-      const btnAnexo = b.linkAnexo Drive ? `<a href="${b.linkAnexoDrive}" target="_blank" class="action-btn anexo-btn" title="Abrir Anexo no Drive">📎 Anexo</a>` : '';
+      const btnAnexo = b.linkAnexoDrive ? `<a href="${b.linkAnexoDrive}" target="_blank" class="action-btn anexo-btn" title="Abrir Anexo no Drive">📎 Anexo</a>` : '';
 
       const itemDiv = document.createElement('div');
       itemDiv.className = 'alerta-item';
