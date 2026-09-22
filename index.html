@@ -813,15 +813,15 @@
       <div id="dropdown_sugestoes_pedidos" class="dropdown-sugestoes hidden"></div>
       
       <small id="legenda_vinculo_pedido" style="color: #64748b; font-size: 0.8rem; display: block; margin-top: 5px;">
-        💡 Digite para pesquisar. Se não escolher nenhum, a nota será salva como <strong>Avulsa</strong>.
+        💡 Digite para pesquisar. Se não escolher nenhum, a nota usará a numeração padrão.
       </small>
     </div>
 
     <!-- CAMPOS SEPARADOS: NÚMERO DA NOTA E CPF/CNPJ -->
     <div class="grid-2">
       <div>
-        <label>Número da Nota:</label>
-        <input type="text" id="nota_numero" placeholder="Ex: NT-101">
+        <label>Número da Nota / Pedido:</label>
+        <input type="text" id="nota_numero" placeholder="Ex: #001">
       </div>
       <div>
         <label>CPF / CNPJ:</label>
@@ -1007,7 +1007,6 @@
 
       btnOpcoesDesconto.forEach(btn => btn.classList.add('hidden'));
 
-      // Garantir que a aba ativa no histórico seja a de Pedidos
       alternarAbaHistorico('pedidos');
     } else {
       if (btnPrecos) btnPrecos.classList.remove('hidden');
@@ -1154,9 +1153,7 @@
   let orcamentoAtualId = null;
   let notaVinculadaAoOrcamentoAtual = null;
 
-  // ==========================================
-  // SISTEMA DE AUTO-SALVAMENTO DO ORÇAMENTO (RASCUNHO)
-  // ==========================================
+  // AUTO-SALVAMENTO DO ORÇAMENTO (RASCUNHO)
   function autoSalvarRascunho() {
     const rascunho = {
       cli_nome: document.getElementById('cli_nome').value,
@@ -1328,7 +1325,7 @@
   }
 
   function setDesconto(pct, event) {
-    if (!ehAdmin && pct > 0) return; // Bloqueio de desconto para não-admins
+    if (!ehAdmin && pct > 0) return;
     descontoAtual = pct;
     const btns = document.querySelectorAll('#group-desconto .btn-toggle');
     btns.forEach(b => b.classList.remove('active'));
@@ -1726,7 +1723,6 @@
       }
     }
 
-    // APOSTILA, ENCADERNAÇÃO E LIVRETO
     if (item.ehApostila) {
       let qtdFolhasFisicas = item.paginas;
       let qtdCobrada = item.paginas;
@@ -1791,13 +1787,12 @@
   }
 
   function alterarPrecoUnitarioManual(index, novoValor) {
-    if (!ehAdmin) return; // Bloqueio adicional por segurança no código
+    if (!ehAdmin) return;
 
     const valorNum = parseFloat(novoValor) || 0;
     itensNoOrcamento[index].precoUnitario = valorNum;
     itensNoOrcamento[index].subtotal = valorNum * itensNoOrcamento[index].qtd;
     
-    // Atualiza apenas o texto do subtotal da linha específica sem redesenhar a tabela toda
     const linhaSubtotal = document.getElementById(`subtotal_item_${index}`);
     if (linhaSubtotal) {
       linhaSubtotal.innerText = formatarMoeda(itensNoOrcamento[index].subtotal);
@@ -2357,7 +2352,8 @@ ${textoPagamento}${linhaObs}
     configurarVinculoPedidoPorId(orcamentoAtualId);
 
     document.getElementById('nota_edit_id').value = "";
-    document.getElementById('nota_numero').value = `NT-${numeroOrcamentoAtual}`;
+    // AJUSTADO: Usa exatamente a mesma numeração do Pedido
+    document.getElementById('nota_numero').value = `#${numeroOrcamentoAtual}`;
     document.getElementById('nota_documento').value = "";
     document.getElementById('nota_cliente').value = nome;
     document.getElementById('nota_telefone').value = tel;
@@ -2465,6 +2461,9 @@ ${textoPagamento}${linhaObs}
     document.getElementById('input_busca_pedido_vinculo').value = `Pedido #${p.numero} - ${p.nome || 'Balcão'} (${formatarMoeda(p.total)})`;
     document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
 
+    // AJUSTADO: Alinha a numeração da Nota diretamente à do Pedido selecionado
+    document.getElementById('nota_numero').value = `#${p.numero}`;
+
     const legenda = document.getElementById('legenda_vinculo_pedido');
     legenda.innerHTML = `✅ <strong>Vinculado ao Pedido #${p.numero}</strong>. Os dados foram preenchidos automaticamente.`;
     legenda.style.color = '#15803d';
@@ -2504,8 +2503,9 @@ ${textoPagamento}${linhaObs}
   function desvincularPedidoDaNota() {
     document.getElementById('nota_vinculo_pedido').value = "";
     document.getElementById('input_busca_pedido_vinculo').value = "";
+    document.getElementById('nota_numero').value = `#${numeroOrcamentoAtual}`;
     const legenda = document.getElementById('legenda_vinculo_pedido');
-    legenda.innerHTML = `💡 Digite para pesquisar. Se não escolher nenhum, a nota será salva como <strong>Avulsa</strong>.`;
+    legenda.innerHTML = `💡 Digite para pesquisar. Se não escolher nenhum, a nota usará a numeração padrão.`;
     legenda.style.color = '#64748b';
     document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
   }
@@ -2514,14 +2514,14 @@ ${textoPagamento}${linhaObs}
   async function enviarEmailSilenciosoEmailJS(nota) {
     const nomeCli = nota.cliente || "Cliente Balcão";
     const numTel = nota.telefone || "Sem telefone";
-    const numNota = nota.numero || "Sem número";
+    const numNota = nota.numero || `#${numeroOrcamentoAtual}`;
     const docCli = nota.documento || "Não informado";
 
-    const assuntoFormatado = `NOTA/BOLETO - ${nomeCli} - ${numNota} - ${numTel}`;
+    const assuntoFormatado = `PEDIDO/NOTA - ${nomeCli} - ${numNota} - ${numTel}`;
 
     let corpoDescricao = `${nomeCli} - ${numNota} - ${numTel}\n`;
     corpoDescricao += `==========================================\n`;
-    corpoDescricao += `NÚMERO DA NOTA: ${numNota}\n`;
+    corpoDescricao += `NÚMERO DO PEDIDO/NOTA: ${numNota}\n`;
     corpoDescricao += `CPF / CNPJ: ${docCli}\n`;
     corpoDescricao += `VALOR TOTAL: ${formatarMoeda(nota.valor)}\n`;
     corpoDescricao += `------------------------------------------\n`;
@@ -2573,8 +2573,7 @@ ${textoPagamento}${linhaObs}
     }
 
     document.getElementById('nota_edit_id').value = "";
-    const proximaNotaNum = "NT-" + (carregarNotasLista().length + 1).toString().padStart(3, '0');
-    document.getElementById('nota_numero').value = proximaNotaNum;
+    document.getElementById('nota_numero').value = `#${numeroOrcamentoAtual}`;
     document.getElementById('nota_documento').value = "";
     
     document.getElementById('nota_cliente').value = document.getElementById('cli_nome').value.trim();
@@ -2604,7 +2603,7 @@ ${textoPagamento}${linhaObs}
 
     const btnSalvar = document.getElementById('btn_salvar_nota_submit');
     const idExistente = document.getElementById('nota_edit_id').value;
-    const numero = document.getElementById('nota_numero').value.trim() || ("NT-" + Date.now().toString().slice(-4));
+    const numero = document.getElementById('nota_numero').value.trim() || (`#${numeroOrcamentoAtual}`);
     const documento = document.getElementById('nota_documento').value.trim() || "";
     const cliente = document.getElementById('nota_cliente').value.trim() || "Cliente Balcão";
     const telefone = document.getElementById('nota_telefone').value.trim() || "";
@@ -2819,7 +2818,6 @@ ${textoPagamento}${linhaObs}
     }
   }
 
-  // VERIFICA SE O PEDIDO CARREGADO NA TELA POSSUI NOTA
   function verificarNotaVinculadaDoOrcamentoAtual() {
     const banner = document.getElementById('banner_nota_vinculada');
     if (!orcamentoAtualId || !ehAdmin) {
@@ -2859,7 +2857,6 @@ ${textoPagamento}${linhaObs}
     filtrarHistorico();
   }
 
-  // HISTÓRICO COM ABAS
   function abrirHistorico(aba = 'pedidos') {
     if (!ehAdmin && aba === 'notas') aba = 'pedidos';
     alternarAbaHistorico(aba);
