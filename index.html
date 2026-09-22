@@ -176,7 +176,7 @@
       padding: 14px; border-radius: 6px; border: 1px solid #bbf7d0; margin-top: 10px; color: #14532d; line-height: 1.45;
     }
     
-    .btn-group-actions { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .btn-group-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 12px; }
     .btn-copy {
       background: var(--primary); color: #ffffff; border: none; padding: 14px 10px;
       font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
@@ -324,7 +324,7 @@
   <div class="header-bar">
     <h2>Calculadora de Orçamentos - Impact Haus</h2>
     <div class="top-actions">
-      <button type="button" class="btn-action-top" style="background:#f0fdf4; border-color:#86efac; color:#15803d;" onclick="abrirModalNovaNota()">
+      <button type="button" class="btn-action-top" id="btn-lancar-nota-top" style="background:#f0fdf4; border-color:#86efac; color:#15803d;" onclick="abrirModalNovaNota()">
         📝 Lançar Nota / Boleto
       </button>
       <button type="button" class="btn-action-top" onclick="abrirHistorico('pedidos')">
@@ -637,11 +637,13 @@
   <textarea id="orc_observacao" placeholder="Ex: Refilar sem borda branca, cliente traz arquivo em PDF/X-1a, embalar em pacotes de 100 unidades..." oninput="atualizarResumo()"></textarea>
 
   <!-- Desconto -->
-  <label style="margin-top: 15px;">Aplicar Desconto Promocional (Sobre o Total):</label>
-  <div class="btn-group" id="group-desconto">
-    <button type="button" class="btn-toggle active" onclick="setDesconto(0, event)">Sem Desconto</button>
-    <button type="button" class="btn-toggle" onclick="setDesconto(5, event)">🏷️ 5% de Desconto</button>
-    <button type="button" class="btn-toggle" onclick="setDesconto(10, event)">🏷️ 10% de Desconto</button>
+  <div id="box-desconto-container">
+    <label style="margin-top: 15px;">Aplicar Desconto Promocional (Sobre o Total):</label>
+    <div class="btn-group" id="group-desconto">
+      <button type="button" class="btn-toggle active" onclick="setDesconto(0, event)">Sem Desconto</button>
+      <button type="button" class="btn-toggle btn-desconto-opcao" onclick="setDesconto(5, event)">🏷️ 5% de Desconto</button>
+      <button type="button" class="btn-toggle btn-desconto-opcao" onclick="setDesconto(10, event)">🏷️ 10% de Desconto</button>
+    </div>
   </div>
 
   <!-- Preview e Ações -->
@@ -651,7 +653,7 @@
       <button type="button" class="btn-copy" onclick="copiarOrcamento()">📋 Copiar Texto</button>
       <button type="button" class="btn-pdf" id="btn_baixar_pdf" onclick="imprimirPDF()">📄 Gerar PDF</button>
       <button type="button" class="btn-save-budget" onclick="salvarOrcamentoNoHistorico()">💾 Salvar Pedido</button>
-      <button type="button" class="btn-make-note" onclick="converterOrcamentoEmNota()">📝 Gerar Nota</button>
+      <button type="button" class="btn-make-note" id="btn_gerar_nota_preview" onclick="converterOrcamentoEmNota()">📝 Gerar Nota</button>
     </div>
   </div>
 </div>
@@ -752,7 +754,7 @@
             <th>Telefone</th>
             <th>Pagamento</th>
             <th>Total</th>
-            <th>Nota Vinculada</th>
+            <th class="col-nota-header">Nota Vinculada</th>
             <th style="text-align: right;">Ações</th>
           </tr>
         </thead>
@@ -989,10 +991,28 @@
 
   function aplicarPermissoesInterface() {
     const btnPrecos = document.getElementById('btn-menu-precos');
+    const btnLancarNotaTop = document.getElementById('btn-lancar-nota-top');
+    const btnGerarNotaPreview = document.getElementById('btn_gerar_nota_preview');
+    const tabBtnNotas = document.getElementById('tab_btn_notas');
+    const btnOpcoesDesconto = document.querySelectorAll('.btn-desconto-opcao');
+
     if (!ehAdmin) {
       if (btnPrecos) btnPrecos.classList.add('hidden');
+      if (btnLancarNotaTop) btnLancarNotaTop.classList.add('hidden');
+      if (btnGerarNotaPreview) btnGerarNotaPreview.classList.add('hidden');
+      if (tabBtnNotas) tabBtnNotas.classList.add('hidden');
+
+      btnOpcoesDesconto.forEach(btn => btn.classList.add('hidden'));
+
+      // Garantir que a aba ativa no histórico seja a de Pedidos
+      alternarAbaHistorico('pedidos');
     } else {
       if (btnPrecos) btnPrecos.classList.remove('hidden');
+      if (btnLancarNotaTop) btnLancarNotaTop.classList.remove('hidden');
+      if (btnGerarNotaPreview) btnGerarNotaPreview.classList.remove('hidden');
+      if (tabBtnNotas) tabBtnNotas.classList.remove('hidden');
+
+      btnOpcoesDesconto.forEach(btn => btn.classList.remove('hidden'));
     }
   }
 
@@ -1231,6 +1251,7 @@
   }
 
   function setDesconto(pct, event) {
+    if (!ehAdmin && pct > 0) return; // Bloqueio de desconto para não-admins
     descontoAtual = pct;
     const btns = document.querySelectorAll('#group-desconto .btn-toggle');
     btns.forEach(b => b.classList.remove('active'));
@@ -1866,7 +1887,7 @@
     let valorDesconto = 0;
     let totalFinal = somaGeral;
 
-    if (descontoAtual > 0) {
+    if (descontoAtual > 0 && ehAdmin) {
       valorDesconto = (somaGeral * descontoAtual) / 100;
       totalFinal = somaGeral - valorDesconto;
     }
@@ -1882,7 +1903,7 @@
 
     let linhaSubtotal = "";
     let linhaDesconto = "";
-    if (descontoAtual > 0) {
+    if (descontoAtual > 0 && ehAdmin) {
       linhaSubtotal = `💵 *Subtotal:* ${formatarMoeda(somaGeral)}\n`;
       linhaDesconto = `🏷️ *Desconto Promocional (${descontoAtual}%):* - ${formatarMoeda(valorDesconto)}\n`;
     }
@@ -1977,7 +1998,7 @@ ${textoPagamento}${linhaObs}
     let valorDesconto = 0;
     let totalFinal = somaGeral;
 
-    if (descontoAtual > 0) {
+    if (descontoAtual > 0 && ehAdmin) {
       valorDesconto = (somaGeral * descontoAtual) / 100;
       totalFinal = somaGeral - valorDesconto;
       document.getElementById('pdf_desconto_linha').style.display = 'block';
@@ -2023,6 +2044,12 @@ ${textoPagamento}${linhaObs}
   }
 
   function verificarAlertasBoletos() {
+    if (!ehAdmin) {
+      const painel = document.getElementById('painel_alertas_boletos');
+      if (painel) painel.classList.add('hidden');
+      return;
+    }
+
     const historico = carregarHistoricoLista();
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
@@ -2085,6 +2112,8 @@ ${textoPagamento}${linhaObs}
   }
 
   function darBaixaBoleto(id) {
+    if (!ehAdmin) return;
+
     const historico = carregarHistoricoLista();
     const orc = historico.find(o => o.id === id);
     if (!orc) return;
@@ -2114,7 +2143,8 @@ ${textoPagamento}${linhaObs}
     const tel = document.getElementById('cli_tel').value.trim() || "";
     const observacao = document.getElementById('orc_observacao').value.trim();
     const somaGeral = itensNoOrcamento.reduce((acc, it) => acc + it.subtotal, 0);
-    const valorDesconto = (somaGeral * descontoAtual) / 100;
+    const descAplicar = ehAdmin ? descontoAtual : 0;
+    const valorDesconto = (somaGeral * descAplicar) / 100;
     const totalFinal = somaGeral - valorDesconto;
     const dataHora = new Date().toLocaleString('pt-BR');
 
@@ -2135,7 +2165,7 @@ ${textoPagamento}${linhaObs}
           formaPagamento: formaPagamentoAtual,
           boletoVencimento: boletoVenc,
           boletoStatus: boletoStat,
-          desconto: descontoAtual,
+          desconto: descAplicar,
           observacao: observacao,
           itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
           total: totalFinal,
@@ -2156,7 +2186,7 @@ ${textoPagamento}${linhaObs}
         formaPagamento: formaPagamentoAtual,
         boletoVencimento: boletoVenc,
         boletoStatus: boletoStat,
-        desconto: descontoAtual,
+        desconto: descAplicar,
         observacao: observacao,
         itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
         total: totalFinal,
@@ -2181,6 +2211,11 @@ ${textoPagamento}${linhaObs}
   }
 
   function converterOrcamentoEmNota() {
+    if (!ehAdmin) {
+      alert("⚠️ Você não tem permissão para gerar notas.");
+      return;
+    }
+
     if (itensNoOrcamento.length === 0) {
       alert("⚠️ Adicione ao menos um item para gerar uma nota!");
       return;
@@ -2447,6 +2482,11 @@ ${textoPagamento}${linhaObs}
   }
 
   function abrirModalNovaNota(pedidoIdPreSelecionado = null) {
+    if (!ehAdmin) {
+      alert("⚠️ Você não tem permissão para acessar a opção de notas.");
+      return;
+    }
+
     document.getElementById('nota_edit_id').value = "";
     const proximaNotaNum = "NT-" + (carregarNotasLista().length + 1).toString().padStart(3, '0');
     document.getElementById('nota_numero').value = proximaNotaNum;
@@ -2475,6 +2515,8 @@ ${textoPagamento}${linhaObs}
   }
 
   async function salvarNota() {
+    if (!ehAdmin) return;
+
     const btnSalvar = document.getElementById('btn_salvar_nota_submit');
     const idExistente = document.getElementById('nota_edit_id').value;
     const numero = document.getElementById('nota_numero').value.trim() || ("NT-" + Date.now().toString().slice(-4));
@@ -2562,6 +2604,8 @@ ${textoPagamento}${linhaObs}
   }
 
   function alternarStatusNota(id, novoStatus) {
+    if (!ehAdmin) return;
+
     let notas = carregarNotasLista();
     const idx = notas.findIndex(n => n.id === id);
     if (idx === -1) return;
@@ -2580,6 +2624,12 @@ ${textoPagamento}${linhaObs}
   }
 
   function renderizarPainelNotasPendentes() {
+    if (!ehAdmin) {
+      const painel = document.getElementById('painel_notas_pendentes');
+      if (painel) painel.classList.add('hidden');
+      return;
+    }
+
     const notas = carregarNotasLista();
     const pedidos = carregarHistoricoLista();
     const pendentes = notas.filter(n => n.status === 'pendente');
@@ -2630,6 +2680,8 @@ ${textoPagamento}${linhaObs}
   }
 
   async function dispararEmailNotaPorId(id) {
+    if (!ehAdmin) return;
+
     const notas = carregarNotasLista();
     const n = notas.find(item => item.id === id);
     if (!n) return;
@@ -2643,6 +2695,8 @@ ${textoPagamento}${linhaObs}
   }
 
   function editarNotaModal(id) {
+    if (!ehAdmin) return;
+
     const notas = carregarNotasLista();
     const n = notas.find(item => item.id === id);
     if (!n) return;
@@ -2665,6 +2719,8 @@ ${textoPagamento}${linhaObs}
   }
 
   function excluirNota(id) {
+    if (!ehAdmin) return;
+
     if (confirm("Deseja realmente excluir esta nota?")) {
       let notas = carregarNotasLista().filter(n => n.id !== id);
       localStorage.setItem('impact_haus_notas', JSON.stringify(notas));
@@ -2681,7 +2737,7 @@ ${textoPagamento}${linhaObs}
   // VERIFICA SE O PEDIDO CARREGADO NA TELA POSSUI NOTA
   function verificarNotaVinculadaDoOrcamentoAtual() {
     const banner = document.getElementById('banner_nota_vinculada');
-    if (!orcamentoAtualId) {
+    if (!orcamentoAtualId || !ehAdmin) {
       banner.classList.add('hidden');
       notaVinculadaAoOrcamentoAtual = null;
       return;
@@ -2707,11 +2763,12 @@ ${textoPagamento}${linhaObs}
   }
 
   function irParaNotaVinculadaAtual() {
-    if (!notaVinculadaAoOrcamentoAtual) return;
+    if (!notaVinculadaAoOrcamentoAtual || !ehAdmin) return;
     abrirAbaNotasEFiltrar(notaVinculadaAoOrcamentoAtual.numero);
   }
 
   function abrirAbaNotasEFiltrar(termo = '') {
+    if (!ehAdmin) return;
     abrirHistorico('notas');
     document.getElementById('filtro_historico').value = termo;
     filtrarHistorico();
@@ -2719,6 +2776,7 @@ ${textoPagamento}${linhaObs}
 
   // HISTÓRICO COM ABAS
   function abrirHistorico(aba = 'pedidos') {
+    if (!ehAdmin && aba === 'notas') aba = 'pedidos';
     alternarAbaHistorico(aba);
     document.getElementById('modalHistorico').classList.remove('hidden');
   }
@@ -2731,6 +2789,8 @@ ${textoPagamento}${linhaObs}
   }
 
   function alternarAbaHistorico(aba) {
+    if (!ehAdmin && aba === 'notas') aba = 'pedidos';
+
     abaAtualHistorico = aba;
     const btnPed = document.getElementById('tab_btn_pedidos');
     const btnNot = document.getElementById('tab_btn_notas');
@@ -2739,12 +2799,12 @@ ${textoPagamento}${linhaObs}
 
     if (aba === 'pedidos') {
       btnPed.classList.add('active');
-      btnNot.classList.remove('active');
+      if (btnNot) btnNot.classList.remove('active');
       secPed.classList.remove('hidden');
       secNot.classList.add('hidden');
     } else {
       btnPed.classList.remove('active');
-      btnNot.classList.add('active');
+      if (btnNot) btnNot.classList.add('active');
       secPed.classList.add('hidden');
       secNot.classList.remove('hidden');
     }
@@ -2757,7 +2817,8 @@ ${textoPagamento}${linhaObs}
     const notas = carregarNotasLista();
     document.getElementById('count-historico').innerText = pedidos.length;
     document.getElementById('tab_count_pedidos').innerText = pedidos.length;
-    document.getElementById('tab_count_notas').innerText = notas.length;
+    const elCountNotas = document.getElementById('tab_count_notas');
+    if (elCountNotas) elCountNotas.innerText = notas.length;
   }
 
   function filtrarHistorico() {
@@ -2778,6 +2839,8 @@ ${textoPagamento}${linhaObs}
       });
       renderizarTabelaHistorico(filtrados);
     } else {
+      if (!ehAdmin) return;
+
       const notas = carregarNotasLista();
       if (!termo) {
         renderizarTabelaNotas(notas);
@@ -2799,8 +2862,15 @@ ${textoPagamento}${linhaObs}
     const tbody = document.getElementById('tbody-historico');
     tbody.innerHTML = '';
 
+    const colNotaHeader = document.querySelector('.col-nota-header');
+    if (colNotaHeader) {
+      if (!ehAdmin) colNotaHeader.classList.add('hidden');
+      else colNotaHeader.classList.remove('hidden');
+    }
+
     if (lista.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum pedido/orçamento encontrado.</td></tr>`;
+      const colSpanNum = ehAdmin ? 8 : 7;
+      tbody.innerHTML = `<tr><td colspan="${colSpanNum}" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum pedido/orçamento encontrado.</td></tr>`;
       return;
     }
 
@@ -2817,18 +2887,24 @@ ${textoPagamento}${linhaObs}
         infoPagamento = `Boleto (${vencStr}) ${statusBadge}`;
       }
 
-      const notaVinculada = todasNotas.find(n => n.pedidoVinculadoId === orc.id);
-      let vinculoNotaTd = `<span style="color:#94a3b8; font-size:0.8rem;">Nenhum</span>`;
-      if (notaVinculada) {
-        vinculoNotaTd = `
-          <button type="button" class="action-btn link-btn" onclick="abrirAbaNotasEFiltrar('${notaVinculada.numero}')" title="Ver Nota ${notaVinculada.numero}">
-            🔗 ${notaVinculada.numero}
-          </button>
-        `;
-      } else {
-        vinculoNotaTd = `
-          <button type="button" class="action-btn" style="color:#0f766e;" onclick="abrirModalNovaNota('${orc.id}')" title="Criar nota para este pedido">+ Vincular Nota</button>
-        `;
+      let vinculoNotaTd = '';
+      if (ehAdmin) {
+        const notaVinculada = todasNotas.find(n => n.pedidoVinculadoId === orc.id);
+        if (notaVinculada) {
+          vinculoNotaTd = `
+            <td>
+              <button type="button" class="action-btn link-btn" onclick="abrirAbaNotasEFiltrar('${notaVinculada.numero}')" title="Ver Nota ${notaVinculada.numero}">
+                🔗 ${notaVinculada.numero}
+              </button>
+            </td>
+          `;
+        } else {
+          vinculoNotaTd = `
+            <td>
+              <button type="button" class="action-btn" style="color:#0f766e;" onclick="abrirModalNovaNota('${orc.id}')" title="Criar nota para este pedido">+ Vincular Nota</button>
+            </td>
+          `;
+        }
       }
 
       const obsTooltip = orc.observacao ? `title="Obs: ${orc.observacao}"` : '';
@@ -2841,9 +2917,9 @@ ${textoPagamento}${linhaObs}
         <td>${orc.tel || '-'}</td>
         <td>${infoPagamento}</td>
         <td><strong>${formatarMoeda(orc.total)}</strong></td>
-        <td>${vinculoNotaTd}</td>
+        ${vinculoNotaTd}
         <td class="actions">
-          ${orc.formaPagamento === 'boleto' && orc.boletoStatus === 'pendente' 
+          ${(orc.formaPagamento === 'boleto' && orc.boletoStatus === 'pendente' && ehAdmin)
             ? `<button type="button" class="action-btn pay" onclick="darBaixaBoleto('${orc.id}')" title="Marcar boleto como pago">✓ Pago</button>` 
             : ''}
           <button type="button" class="action-btn edit" onclick="carregarOrcamentoDoHistorico('${orc.id}')" title="Carregar no editor">👁️ Abrir</button>
@@ -2856,6 +2932,8 @@ ${textoPagamento}${linhaObs}
   }
 
   function renderizarTabelaNotas(lista) {
+    if (!ehAdmin) return;
+
     const tbody = document.getElementById('tbody-historico-notas');
     tbody.innerHTML = '';
 
@@ -2934,7 +3012,7 @@ ${textoPagamento}${linhaObs}
       boxBoleto.classList.add('hidden');
     }
 
-    descontoAtual = orc.desconto || 0;
+    descontoAtual = (ehAdmin && orc.desconto) ? orc.desconto : 0;
     const descBtns = document.querySelectorAll('#group-desconto .btn-toggle');
     descBtns.forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes(`(${descontoAtual},`)));
 
