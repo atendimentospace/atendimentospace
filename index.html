@@ -293,9 +293,9 @@
 
 <!-- TELA DE LOGIN POR SENHA -->
 <div id="tela-login">
-  <h2>Acesso do Administrador</h2>
+  <h2>Acesso do Sistema</h2>
   <p>Entre com seu e-mail e senha cadastrados no Firebase.</p>
-  <input type="text" id="login_email" placeholder="E-mail (ex: atendimentospacespeed@gmail.com)">
+  <input type="text" id="login_email" placeholder="E-mail">
   <input type="password" id="login_senha" placeholder="Sua Senha">
   <button type="button" id="btn-entrar" onclick="fazerLogin()">Entrar no Sistema</button>
   <div id="login-feedback" style="margin-top: 15px; font-size: 0.85rem; color: #b91c1c; display: none;"></div>
@@ -330,7 +330,7 @@
       <button type="button" class="btn-action-top" onclick="abrirHistorico('pedidos')">
         📂 Histórico (<span id="count-historico">0</span>)
       </button>
-      <button type="button" class="btn-action-top" onclick="abrirModalPrecos()">
+      <button type="button" class="btn-action-top" id="btn-menu-precos" onclick="abrirModalPrecos()">
         ⚙️ Preços
       </button>
       <button type="button" class="btn-action-top" style="color:#b91c1c;" onclick="encerrarSessao()">
@@ -922,7 +922,7 @@
   }
 
   // ==========================================
-  // CONFIGURAÇÕES DO FIREBASE
+  // CONFIGURAÇÕES DO FIREBASE E PERMISSÕES
   // ==========================================
   const firebaseConfig = {
     apiKey: "AIzaSyD6sCVnMGvr20_I48FUz6dDlFr3uB0v3hk",
@@ -934,7 +934,13 @@
     measurementId: "G-NGSDREXZ24"
   };
 
-  const EMAIL_PERMITIDO = "atendimentospacespeed@gmail.com";
+  const EMAILS_PERMITIDOS = [
+    "atendimentospacespeed@gmail.com",
+    "devautomacaoimpact@gmail.com"
+  ];
+
+  let usuarioAtualEmail = "";
+  let ehAdmin = false;
 
   let auth = null;
   let db = null;
@@ -957,9 +963,9 @@
       return;
     }
 
-    if (email !== EMAIL_PERMITIDO) {
+    if (!EMAILS_PERMITIDOS.includes(email)) {
       feedback.style.display = 'block';
-      feedback.innerText = "Acesso negado: Este e-mail não tem permissão de administrador.";
+      feedback.innerText = "Acesso negado: Este e-mail não tem permissão de acesso.";
       return;
     }
 
@@ -981,11 +987,25 @@
       });
   }
 
+  function aplicarPermissoesInterface() {
+    const btnPrecos = document.getElementById('btn-menu-precos');
+    if (!ehAdmin) {
+      if (btnPrecos) btnPrecos.classList.add('hidden');
+    } else {
+      if (btnPrecos) btnPrecos.classList.remove('hidden');
+    }
+  }
+
   if (auth) {
     auth.onAuthStateChanged((user) => {
-      if (user && user.email === EMAIL_PERMITIDO) {
+      if (user && EMAILS_PERMITIDOS.includes(user.email.toLowerCase())) {
+        usuarioAtualEmail = user.email.toLowerCase();
+        ehAdmin = (usuarioAtualEmail === "atendimentospacespeed@gmail.com");
+
         document.getElementById('tela-login').classList.add('hidden');
         document.getElementById('app-container').classList.remove('hidden');
+        
+        aplicarPermissoesInterface();
         sincronizarComFirebase();
       } else {
         document.getElementById('tela-login').classList.remove('hidden');
@@ -1672,6 +1692,8 @@
   }
 
   function alterarPrecoUnitarioManual(index, novoValor) {
+    if (!ehAdmin) return; // Bloqueio adicional por segurança no código
+
     const valorNum = parseFloat(novoValor) || 0;
     itensNoOrcamento[index].precoUnitario = valorNum;
     itensNoOrcamento[index].subtotal = valorNum * itensNoOrcamento[index].qtd;
@@ -1716,12 +1738,14 @@
 
     itensNoOrcamento.forEach((it, idx) => {
       const tr = document.createElement('tr');
+      const disabledAttr = ehAdmin ? '' : 'disabled readonly';
+      
       tr.innerHTML = `
         <td><strong>${idx + 1}</strong></td>
         <td>${it.descricao}</td>
         <td>${it.qtd}</td>
         <td>
-          <input type="number" step="0.01" value="${it.precoUnitario.toFixed(2)}" style="width: 100px; padding: 5px; font-size: 0.9rem;" oninput="alterarPrecoUnitarioManual(${idx}, this.value)">
+          <input type="number" step="0.01" value="${it.precoUnitario.toFixed(2)}" ${disabledAttr} style="width: 100px; padding: 5px; font-size: 0.9rem;" oninput="alterarPrecoUnitarioManual(${idx}, this.value)">
         </td>
         <td><strong id="subtotal_item_${idx}">${formatarMoeda(it.subtotal)}</strong></td>
         <td class="actions">
@@ -2988,6 +3012,11 @@ ${textoPag}${obsTxt}
   }
 
   function abrirModalPrecos() {
+    if (!ehAdmin) {
+      alert("⚠️ Você não tem permissão de administrador para alterar a tabela de preços.");
+      return;
+    }
+
     const tbody = document.getElementById('tbody-precos');
     tbody.innerHTML = '';
 
@@ -3014,6 +3043,8 @@ ${textoPag}${obsTxt}
   }
 
   function salvarConfigPrecos() {
+    if (!ehAdmin) return;
+
     ITENS_CADASTRO.forEach(item => {
       const novo = parseFloat(document.getElementById(`cfg_${item.key}_novo_cliente`).value) || 0;
       const cli = parseFloat(document.getElementById(`cfg_${item.key}_cliente`).value) || 0;
@@ -3040,6 +3071,8 @@ ${textoPag}${obsTxt}
   }
 
   function restaurarPadroes() {
+    if (!ehAdmin) return;
+
     if (confirm("Deseja restaurar todos os valores para os padrões iniciais?")) {
       TABELA_PRECOS = JSON.parse(JSON.stringify(PRECOS_PADRAO));
       localStorage.removeItem('impact_haus_precos');
