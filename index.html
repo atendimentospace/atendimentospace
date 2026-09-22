@@ -1,31 +1,3406 @@
-function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var folderId = "1oOm17vlPlkCb57rJxW0Qir669KWgBxZu"; // Opcional: Cole o ID da pasta do Drive aqui se quiser salvar numa pasta específica
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Orçamentos e Notas - Impact Haus</title>
+
+  <!-- SDKs do Firebase v9 Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- SDK do EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #15803d;
+      --primary-hover: #166534;
+      --primary-light: #f0fdf4;
+      --accent: #16a34a;
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --card-inner: #f8fafc;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+      --warning-bg: #fefce8;
+      --warning-border: #fde047;
+      --warning-text: #854d0e;
+      --note-border: #38bdf8;
+      --note-bg: #f0f9ff;
+    }
+
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    .container { max-width: 950px; margin: 0 auto; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.06); border: 1px solid var(--border); }
     
-    var folder;
-    if (folderId && folderId !== "SEU_ID_DA_PASTA_AQUI") {
-      folder = DriveApp.getFolderById(folderId);
-    } else {
-      folder = DriveApp.getRootFolder();
+    /* PAINEL LATERAL FLUTUANTE ESQUERDO */
+    .painel-lateral-esquerdo {
+      position: fixed; top: 20px; left: 20px; width: 340px; max-height: calc(100vh - 40px);
+      overflow-y: auto; z-index: 900; pointer-events: none;
+    }
+    .painel-lateral-esquerdo > * { pointer-events: auto; }
+    @media (max-width: 1400px) {
+      .painel-lateral-esquerdo { position: static; width: 100%; max-height: none; margin-bottom: 20px; }
+    }
+
+    #tela-login {
+      max-width: 400px; margin: 80px auto; background: white; padding: 30px;
+      border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); border: 1px solid var(--border); text-align: center;
+    }
+    #tela-login h2 { color: var(--primary); margin-top: 0; margin-bottom: 8px; }
+    #tela-login p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; }
+    #tela-login input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem; margin-bottom: 12px; }
+    #tela-login button { width: 100%; padding: 12px; border: none; background: var(--primary); color: white; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; }
+    #tela-login button:hover { background: var(--primary-hover); }
+
+    .header-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 10px; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+    .header-bar h2 { margin: 0; color: var(--primary); font-size: 1.45rem; }
+    
+    .top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-action-top {
+      background: var(--card-inner); border: 1px solid var(--border); color: var(--text);
+      padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600;
+      font-size: 0.88rem; display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .btn-action-top:hover { background: #e2e8f0; border-color: var(--primary); }
+
+    .alerta-vencimento-box {
+      background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--warning-text);
+      padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .alerta-vencimento-box strong { font-size: 0.95rem; }
+    .alerta-item { margin-top: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-top: 1px dashed var(--warning-border); padding-top: 6px; }
+
+    /* PAINEL DE NOTAS PENDENTES NA TELA PRINCIPAL */
+    .painel-notas-box {
+      background: var(--note-bg); border: 1px solid var(--note-border); color: #0369a1;
+      padding: 14px 16px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .painel-notas-box .header-painel-notas {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 5px;
+    }
+    .nota-card-item {
+      background: #ffffff; border: 1px solid #bae6fd; border-radius: 6px;
+      padding: 10px 12px; margin-top: 8px; display: flex; justify-content: space-between;
+      align-items: center; flex-wrap: wrap; gap: 10px; color: var(--text);
+    }
+    .nota-card-item strong { color: #0284c7; }
+    .nota-obs-tag {
+      display: block; font-size: 0.85rem; color: #475569; background: #f1f5f9;
+      padding: 4px 8px; border-radius: 4px; margin-top: 5px; border-left: 3px solid #0284c7;
+    }
+
+    .alerta-cliente-existente {
+      background: #dcfce7; border: 1px solid #86efac; color: #14532d;
+      padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; margin-top: 6px; display: flex; justify-content: space-between; align-items: center;
+    }
+
+    /* BANNER DE NOTA VINCULADA AO PEDIDO ATUAL */
+    .banner-nota-vinculada {
+      background: #f0fdf4; border: 1px solid #86efac; color: #166534;
+      padding: 9px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.88rem;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+    label { display: block; font-weight: 600; margin-top: 12px; margin-bottom: 6px; font-size: 0.9rem; color: #334155; }
+    input[type="text"], input[type="password"], input[type="number"], input[type="date"], select, textarea {
+      width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 1rem;
+      background: #ffffff; color: var(--text);
+    }
+    textarea { resize: vertical; min-height: 60px; font-size: 0.92rem; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(21, 128, 61, 0.15); }
+
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .btn-toggle {
+      flex: 1; min-width: 105px; padding: 10px; border: 1.5px solid var(--border);
+      background: var(--card-inner); border-radius: 8px; cursor: pointer; font-weight: 600;
+      text-align: center; transition: all 0.2s; color: var(--text-muted); font-size: 0.88rem;
+    }
+    .btn-toggle:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-toggle.active { background-color: var(--primary); color: #ffffff; border-color: var(--primary); font-weight: bold; }
+
+    .box-builder {
+      background: var(--card-inner); padding: 18px; border-radius: 10px;
+      border: 1px solid var(--border); margin-top: 15px;
+    }
+    .box-options { background: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-top: 10px; }
+    .hidden { display: none !important; }
+
+    .btn-add-item {
+      background: var(--primary); color: #ffffff; border: none; padding: 12px 18px;
+      font-size: 1rem; font-weight: bold; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 15px;
+      transition: background 0.2s;
+    }
+    .btn-add-item:hover { background: var(--primary-hover); }
+
+    .btn-cancel-edit {
+      background: #64748b; color: white; border: none; padding: 12px; font-size: 1rem;
+      font-weight: 600; border-radius: 8px; cursor: pointer; margin-top: 15px; width: 100%;
+    }
+    .btn-cancel-edit:hover { background: #475569; }
+
+    .table-container { margin-top: 25px; overflow-x: auto; }
+    .table-custom { width: 100%; border-collapse: collapse; background: #ffffff; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+    .table-custom th, .table-custom td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.9rem; }
+    .table-custom th { background: #f8fafc; color: var(--primary); font-weight: 600; }
+    .table-custom td.actions { white-space: nowrap; text-align: right; }
+
+    .action-btn {
+      padding: 5px 8px; border-radius: 4px; border: 1px solid var(--border); background: #ffffff;
+      cursor: pointer; font-size: 0.82rem; font-weight: 600; margin-left: 4px; transition: all 0.15s; color: var(--text);
+    }
+    .action-btn:hover { border-color: var(--primary); }
+    .action-btn.edit { color: #0284c7; }
+    .action-btn.clone { color: #16a34a; }
+    .action-btn.del { color: #dc2626; }
+    .action-btn.pay { color: #059669; border-color: #a7f3d0; background: #ecfdf5; }
+    .action-btn.done { color: #047857; background: #d1fae5; border-color: #6ee7b7; font-weight: bold; }
+    .action-btn.link-btn { color: #2563eb; background: #eff6ff; border-color: #bfdbfe; }
+    .action-btn.email { color: #7c3aed; background: #f5f3ff; border-color: #ddd6fe; }
+    .action-btn.anexo-btn { color: #15803d; background: #f0fdf4; border-color: #86efac; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
+
+    .result-box {
+      margin-top: 20px; background: var(--primary-light); border: 1px dashed var(--primary);
+      padding: 16px; border-radius: 8px;
+    }
+    .preview-text {
+      white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; font-size: 0.95rem; background: #ffffff;
+      padding: 14px; border-radius: 6px; border: 1px solid #bbf7d0; margin-top: 10px; color: #14532d; line-height: 1.45;
     }
     
-    var bytes = Utilities.base64Decode(data.fileBase64);
-    var blob = Utilities.newBlob(bytes, data.mimeType, data.fileName);
-    var file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    
-    var fileUrl = file.getUrl();
-    
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "success",
-      fileUrl: fileUrl
-    })).setMimeType(ContentService.MimeType.JSON);
-    
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "error",
-      message: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    .btn-group-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 12px; }
+    .btn-copy {
+      background: var(--primary); color: #ffffff; border: none; padding: 14px 10px;
+      font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-copy:hover { background: var(--primary-hover); }
+
+    .btn-pdf {
+      background: #dc2626; color: white; border: none; padding: 14px 10px;
+      font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-pdf:hover { background: #b91c1c; }
+
+    .btn-save-budget {
+      background: #0284c7; color: white; border: none; padding: 14px 10px;
+      font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-save-budget:hover { background: #0369a1; }
+
+    .btn-make-note {
+      background: #0d9488; color: white; border: none; padding: 14px 10px;
+      font-size: 0.9rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: background 0.2s;
+    }
+    .btn-make-note:hover { background: #0f766e; }
+
+    .checkbox-inline { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: var(--text); }
+
+    .info-aproveitamento-box {
+      background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 10px 14px;
+      margin-top: 10px; font-size: 0.88rem; color: #166534; line-height: 1.4;
+    }
+
+    .box-anexo-drive {
+      background: #f8fafc; border: 1.5px dashed #cbd5e1; padding: 12px; border-radius: 8px; margin-top: 15px;
+    }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-content {
+      background: #ffffff; width: 95%; max-width: 950px; max-height: 88vh; overflow-y: auto;
+      border-radius: 10px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid var(--border);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 15px; }
+    .modal-header h3 { margin: 0; color: var(--primary); }
+    .close-btn { font-size: 1.6rem; cursor: pointer; border: none; background: none; color: var(--text-muted); }
+    .close-btn:hover { color: #000; }
+
+    .tabs-nav { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid var(--border); }
+    .tab-btn {
+      padding: 10px 16px; border: none; background: none; font-size: 0.95rem;
+      font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    .table-precos { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+    .table-precos th, .table-precos td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+    .table-precos th { background: var(--card-inner); color: var(--primary); font-weight: 600; }
+    .table-precos input { padding: 6px; width: 95px; border: 1px solid var(--border); border-radius: 4px; background: #ffffff; color: var(--text); }
+
+    .modal-footer {
+      display: flex; justify-content: space-between; align-items: center; margin-top: 20px;
+      border-top: 1px solid var(--border); padding-top: 15px; flex-wrap: wrap; gap: 10px;
+    }
+    .btn-save-modal { background: var(--primary); color: #ffffff; border: none; padding: 10px 22px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    .btn-save-modal:hover { background: var(--primary-hover); }
+    .btn-reset-modal { background: #dc2626; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+
+    .search-input { width: 100%; padding: 11px 14px; font-size: 0.95rem; border: 1px solid var(--border); border-radius: 8px; background: #ffffff; color: var(--text); }
+    .badge-num { background: #e0f2fe; color: #0369a1; padding: 3px 7px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    .badge-nota { background: #fef3c7; color: #b45309; padding: 3px 7px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    .badge-vinculo { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    .badge-status-pago { background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+    .badge-status-pendente { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+
+    /* AUTOCOMPLETE */
+    .dropdown-sugestoes {
+      position: absolute; top: 100%; left: 0; right: 0; background: #ffffff;
+      border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px;
+      max-height: 190px; overflow-y: auto; z-index: 1050; box-shadow: 0 10px 20px rgba(0,0,0,0.12);
+    }
+    .item-sugestao-pedido {
+      padding: 9px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer;
+      font-size: 0.88rem; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;
+    }
+    .item-sugestao-pedido:hover { background: #f0fdf4; }
+    .item-sugestao-pedido strong { color: var(--primary); }
+
+    /* LAYOUT IMPRESSÃO / PDF */
+    #documento-pdf-print { display: none; }
+    @page { margin: 10mm 15mm; size: A4 portrait; }
+    @media print {
+      body { margin: 0 !important; padding: 0 !important; background: #ffffff !important; }
+      body * { visibility: hidden; }
+      #documento-pdf-print, #documento-pdf-print * { visibility: visible; }
+      #documento-pdf-print {
+        display: block !important; position: absolute; left: 0; top: 0; width: 100%;
+        background: #ffffff !important; color: #000000 !important;
+        font-family: Arial, Helvetica, sans-serif !important; padding: 0;
+      }
+      .pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; }
+      .pdf-logo-title h1 { margin: 0; font-size: 24px; letter-spacing: -0.5px; font-weight: 900; }
+      .pdf-logo-title span { font-size: 10px; font-weight: bold; letter-spacing: 1px; }
+      .pdf-grid-info { display: flex; justify-content: space-between; margin-top: 14px; font-size: 12px; line-height: 1.5; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
+      .pdf-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; }
+      .pdf-table th, .pdf-table td { border: 1px solid #aaa; padding: 6px 8px; }
+      .pdf-table th { background: #f3f4f6; text-align: left; }
+      .pdf-total-box { margin-top: 12px; text-align: right; font-size: 15px; font-weight: bold; }
+      .pdf-obs { margin-top: 14px; font-size: 11px; border: 1px dashed #666; padding: 8px; background: #fafafa; }
+      .pdf-termos { margin-top: 14px; font-size: 11px; line-height: 1.5; }
+      .pdf-dados-bancarios { margin-top: 12px; border: 1px solid #ccc; padding: 8px 12px; font-size: 11px; background: #fafafa; }
+      .pdf-footer { margin-top: 28px; border-top: 1px solid #ddd; padding-top: 10px; font-size: 9.5px; text-align: center; color: #444; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN POR SENHA -->
+<div id="tela-login">
+  <h2>Acesso do Sistema</h2>
+  <p>Entre com seu e-mail e senha cadastrados no Firebase.</p>
+  <form onsubmit="fazerLogin(event)">
+    <input type="text" id="login_email" placeholder="E-mail" required autocomplete="username">
+    <input type="password" id="login_senha" placeholder="Sua Senha" required autocomplete="current-password">
+    <button type="submit" id="btn-entrar">Entrar no Sistema</button>
+  </form>
+  <div id="login-feedback" style="margin-top: 15px; font-size: 0.85rem; color: #b91c1c; display: none;"></div>
+</div>
+
+<!-- PAINEL LATERAL ESQUERDO -->
+<div class="painel-lateral-esquerdo">
+  <!-- PAINEL DE NOTAS PENDENTES -->
+  <div id="painel_notas_pendentes" class="painel-notas-box hidden">
+    <div class="header-painel-notas">
+      <strong>📌 Notas & Serviços Pendentes (<span id="count-notas-pendentes">0</span>)</strong>
+      <button type="button" class="action-btn" onclick="abrirHistorico('notas')">Ver Todas</button>
+    </div>
+    <div id="lista_notas_pendentes"></div>
+  </div>
+
+  <!-- ALERTAS DE BOLETOS -->
+  <div id="painel_alertas_boletos" class="alerta-vencimento-box hidden">
+    <strong>⚠️ Boletos próximos / pendentes:</strong>
+    <div id="lista_alertas_boletos"></div>
+  </div>
+</div>
+
+<!-- APLICAÇÃO PRINCIPAL -->
+<div class="container hidden" id="app-container">
+  <div class="header-bar">
+    <h2>Calculadora de Orçamentos - Impact Haus</h2>
+    <div class="top-actions">
+      <button type="button" class="btn-action-top" id="btn-lancar-nota-top" style="background:#f0fdf4; border-color:#86efac; color:#15803d;" onclick="abrirModalNovaNota()">
+        📝 Lançar Nota / Boleto
+      </button>
+      <button type="button" class="btn-action-top" onclick="abrirHistorico('pedidos')">
+        📂 Histórico (<span id="count-historico">0</span>)
+      </button>
+      <button type="button" class="btn-action-top" id="btn-menu-precos" onclick="abrirModalPrecos()">
+        ⚙️ Preços
+      </button>
+      <button type="button" class="btn-action-top" style="color:#b91c1c;" onclick="encerrarSessao()">
+        Sair
+      </button>
+    </div>
+  </div>
+
+  <!-- BANNER DE NOTA VINCULADA AO PEDIDO ATUAL -->
+  <div id="banner_nota_vinculada" class="banner-nota-vinculada hidden">
+    <div>
+      <span>🔗 <strong>Este pedido possui nota/boleto vinculado:</strong> <span id="lbl_nota_vinculada" class="badge-nota"></span></span>
+      <span id="lbl_status_nota_vinculada" style="margin-left: 8px;"></span>
+    </div>
+    <button type="button" class="action-btn link-btn" onclick="irParaNotaVinculadaAtual()">🔍 Abrir Aba da Nota</button>
+  </div>
+
+  <div style="background: var(--card-inner); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+    <div>
+      <span>Orçamento / Pedido Atual: <strong id="tag_orcamento_num" class="badge-num">#001</strong></span>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="iniciarNovoOrcamento(true)" style="background: #ffffff; border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ Novo Orçamento Limpo</button>
+      <button type="button" onclick="limparCamposOrcamentoForm()" style="background: #fff1f2; border: 1px solid #fecdd3; color: #e11d48; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600;" title="Limpar dados preenchidos">🧹 Limpar Tudo</button>
+    </div>
+  </div>
+
+  <label>Tipo de Cliente</label>
+  <div class="btn-group" id="group-cliente">
+    <button type="button" class="btn-toggle active" id="btn_perfil_novo" onclick="setPerfil('novo_cliente', event)">Novo Cliente</button>
+    <button type="button" class="btn-toggle" id="btn_perfil_frequente" onclick="setPerfil('cliente', event)">Cliente Frequente</button>
+    <button type="button" class="btn-toggle" id="btn_perfil_balcao" onclick="setPerfil('balcao', event)">Balcão</button>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <label>Nome do Cliente</label>
+      <input type="text" id="cli_nome" placeholder="Ex: João da Silva" oninput="atualizarResumo(); autoSalvarRascunho();">
+    </div>
+    <div>
+      <label>Telefone / WhatsApp</label>
+      <input type="text" id="cli_tel" placeholder="(00) 00000-0000" oninput="verificarTelefoneCliente(); atualizarResumo(); autoSalvarRascunho();">
+      <div id="alerta_cliente_existente" class="alerta-cliente-existente hidden">
+        <span>⭐ Cliente cadastrado: <strong id="nome_cliente_encontrado"></strong></span>
+        <button type="button" onclick="aplicarPerfilFrequenteAutomatico()" style="background:#15803d; color:#ffffff; font-weight:bold; border:none; padding:3px 7px; border-radius:4px; font-size:0.75rem; cursor:pointer;">Usar Tabela Cliente</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="box-options" style="margin-top: 15px;">
+    <label style="margin-top: 0;">Forma / Condição de Pagamento:</label>
+    <div class="btn-group" id="group-pagamento">
+      <button type="button" class="btn-toggle active" onclick="setFormaPagamento('adiantado', event)">Pagar Adiantado</button>
+      <button type="button" class="btn-toggle" onclick="setFormaPagamento('na_hora', event)">Acertar na Hora</button>
+      <button type="button" class="btn-toggle" onclick="setFormaPagamento('boleto', event)">Boleto Bancário</button>
+    </div>
+
+    <div id="box-campos-boleto" class="grid-2 hidden" style="margin-top: 12px;">
+      <div>
+        <label>Data de Vencimento do Boleto:</label>
+        <input type="date" id="boleto_vencimento" onchange="atualizarResumo(); autoSalvarRascunho();">
+      </div>
+      <div>
+        <label>Status do Pagamento:</label>
+        <select id="boleto_status" onchange="atualizarResumo(); autoSalvarRascunho();">
+          <option value="pendente">Pendente de Pagamento</option>
+          <option value="pago">Já Pago</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="box-builder" id="box-builder-anchor">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <strong id="titulo-box-item" style="color: var(--primary); font-size: 1.05rem;">Configurar Material</strong>
+      <span id="badge-modo" style="font-size: 0.8rem; background: #e2e8f0; padding: 3px 8px; border-radius: 4px; display: none;">Modo Edição</span>
+    </div>
+
+    <label>Categoria do Material</label>
+    <div class="btn-group" id="group-categoria">
+      <button type="button" class="btn-toggle active" onclick="setCategoria('sulfite', event)">Sulfite</button>
+      <button type="button" class="btn-toggle" onclick="setCategoria('personalizado', event)">Tamanho Personalizado</button>
+      <button type="button" class="btn-toggle" onclick="setCategoria('couche_a5', event)">Couchê A5</button>
+      <button type="button" class="btn-toggle" onclick="setCategoria('couche_a4', event)">Couchê A4</button>
+      <button type="button" class="btn-toggle" onclick="setCategoria('couche_a3', event)">Couchê Super A3</button>
+      <button type="button" class="btn-toggle" onclick="setCategoria('adesivo_folha', event)">Adesivo Folha</button>
+      <button type="button" class="btn-toggle" onclick="setCategoria('m2', event)">Grandes Formatos (cm)</button>
+    </div>
+
+    <!-- Sulfite -->
+    <div id="box-sulfite" class="box-options">
+      <div class="grid-2">
+        <div>
+          <label>Formato</label>
+          <select id="sulfite_formato">
+            <option value="A4">A4</option>
+            <option value="A3">A3</option>
+          </select>
+        </div>
+        <div>
+          <label>Tipo de Cor</label>
+          <select id="sulfite_cor">
+            <option value="PB">Preto e Branco</option>
+            <option value="Color">Colorido</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAMANHO PERSONALIZADO -->
+    <div id="box-personalizado" class="box-options hidden">
+      <div class="grid-2">
+        <div>
+          <label>Largura da Peça (cm):</label>
+          <input type="number" id="pers_largura" step="0.1" value="5" oninput="atualizarPreviewAproveitamento()">
+        </div>
+        <div>
+          <label>Altura da Peça (cm):</label>
+          <input type="number" id="pers_altura" step="0.1" value="5" oninput="atualizarPreviewAproveitamento()">
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top: 8px;">
+        <div>
+          <label>Tamanho da Folha Base / Formato:</label>
+          <select id="pers_folha_base" onchange="verificarMudancaBasePersonalizada()">
+            <option value="A4">Folha A4 (Útil: 20 x 28,7 cm)</option>
+            <option value="A3" selected>Super A3 (Útil: 31 x 46 cm)</option>
+            <option value="vinil_m2">Adesivo Vinil por Metro Quadrado (m²)</option>
+          </select>
+        </div>
+        <div>
+          <label>Material da Impressão:</label>
+          <select id="pers_material_tipo" onchange="atualizarPreviewAproveitamento()">
+            <option value="adesivo">Adesivo em Folha</option>
+            <option value="couche_115g">Couchê 115g</option>
+            <option value="couche_180g">Couchê 180g</option>
+            <option value="couche_250g">Couchê 250g</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="pers_box_aproveitamento" class="info-aproveitamento-box"></div>
+    </div>
+
+    <!-- Couchê A5 -->
+    <div id="box-couche-a5" class="box-options hidden">
+      <label>Gramatura Couchê A5</label>
+      <select id="couche_a5_gram">
+        <option value="115g">Couchê 115g</option>
+        <option value="180g">Couchê 180g</option>
+        <option value="250g">Couchê 250g</option>
+      </select>
+    </div>
+
+    <!-- Couchê A4 -->
+    <div id="box-couche-a4" class="box-options hidden">
+      <label>Gramatura Couchê A4</label>
+      <select id="couche_a4_gram">
+        <option value="115g">Couchê 115g</option>
+        <option value="180g">Couchê 180g</option>
+        <option value="250g">Couchê 250g</option>
+      </select>
+    </div>
+
+    <!-- Couchê Super A3 -->
+    <div id="box-couche-a3" class="box-options hidden">
+      <label>Gramatura Couchê Super A3</label>
+      <select id="couche_a3_gram">
+        <option value="115g">Couchê 115g</option>
+        <option value="180g">Couchê 180g</option>
+        <option value="250g">Couchê 250g</option>
+      </select>
+    </div>
+
+    <!-- Adesivo Folha -->
+    <div id="box-adesivo-folha" class="box-options hidden">
+      <label>Tamanho do Adesivo</label>
+      <select id="adesivo_folha_tam">
+        <option value="A5">Adesivo A5</option>
+        <option value="A4">Adesivo A4</option>
+        <option value="A3">Adesivo A3</option>
+      </select>
+    </div>
+
+    <!-- Grandes Formatos -->
+    <div id="box-m2" class="box-options hidden">
+      <label>Material Grandes Formatos</label>
+      <select id="m2_tipo">
+        <option value="adesivo_vinil">Adesivo Vinil</option>
+        <option value="banner">Banner</option>
+        <option value="placa_pvc">Placa PVC</option>
+        <option value="papel_fotografico">Papel Fotográfico</option>
+      </select>
+      <div class="grid-2" style="margin-top: 10px;">
+        <div>
+          <label>Largura (cm)</label>
+          <input type="number" id="m2_largura" step="0.5" value="100">
+        </div>
+        <div>
+          <label>Altura (cm)</label>
+          <input type="number" id="m2_altura" step="0.5" value="100">
+        </div>
+      </div>
+    </div>
+
+    <div id="box-face" class="box-options">
+      <label>Lados da Impressão</label>
+      <select id="impressao_face" onchange="atualizarPreviewAproveitamento()">
+        <option value="F">Somente Frente</option>
+        <option value="FV">Frente e Verso</option>
+      </select>
+    </div>
+
+    <!-- Apostila, Encadernação e Livreto -->
+    <div id="box-apostila-wrapper" class="box-options">
+      <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <label class="checkbox-inline">
+          <input type="checkbox" id="chk_apostila" onchange="toggleApostila()"> É apostila / livro?
+        </label>
+      </div>
+
+      <div id="apostila_campos" class="hidden" style="margin-top: 12px;">
+        <div class="grid-3">
+          <div>
+            <label>Nº de páginas por exemplar:</label>
+            <input type="number" id="apostila_paginas" value="20" min="1">
+          </div>
+          <div>
+            <div style="margin-top: 10px;">
+              <label class="checkbox-inline">
+                <input type="checkbox" id="chk_encadernacao" onchange="toggleOpcoesEncadernacao()"> Encadernado?
+              </label>
+            </div>
+            <div id="box_tipo_encadernacao" class="hidden" style="margin-top: 8px;">
+              <select id="sel_tipo_encadernacao">
+                <option value="espiral">Espiral</option>
+                <option value="wireo">Wire-o</option>
+                <option value="brochura">Brochura</option>
+                <option value="capadura">Capa Dura</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <div style="margin-top: 10px;">
+              <label class="checkbox-inline">
+                <input type="checkbox" id="chk_livreto" onchange="toggleOpcoesLivreto()"> Livreto?
+              </label>
+            </div>
+            <div id="box_tipo_livreto" class="hidden" style="margin-top: 8px;">
+              <select id="sel_tipo_livreto">
+                <option value="A5_fechado">A5 Fechado (Dobra no A4)</option>
+                <option value="A4_fechado">A4 Fechado (Dobra no Super A3)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Laminação -->
+    <div class="box-options">
+      <label class="checkbox-inline">
+        <input type="checkbox" id="chk_laminado" onchange="toggleLaminacao()"> Laminado?
+      </label>
+      <div id="box_campos_laminacao" class="hidden" style="margin-top: 10px;">
+        <label style="margin-top: 0;">Valor da Laminação por Lado (R$):</label>
+        <input type="number" id="valor_laminacao_por_lado" step="0.01" min="0" placeholder="0.00" value="0.00">
+      </div>
+    </div>
+
+    <div>
+      <label id="lbl_qtd">Quantidade de Exemplares:</label>
+      <input type="number" id="qtd_itens" value="1" min="1" oninput="atualizarPreviewAproveitamento()">
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+      <button type="button" class="btn-add-item" id="btn_salvar_item" onclick="salvarItemNoCarrinho()">➕ Adicionar Item ao Orçamento</button>
+      <button type="button" class="btn-cancel-edit hidden" id="btn_cancelar_edicao" onclick="cancelarEdicao()">Cancelar Edição</button>
+    </div>
+  </div>
+
+  <!-- Tabela do Carrinho -->
+  <div class="table-container">
+    <h3 style="margin-top: 25px; margin-bottom: 8px; color: var(--primary);">Itens no Orçamento</h3>
+    <table class="table-custom">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Material / Descrição</th>
+          <th>Qtd</th>
+          <th>Unitário (R$)</th>
+          <th>Subtotal</th>
+          <th style="text-align: right;">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-itens-carrinho">
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum item adicionado ainda. Configure o material acima e clique em "Adicionar Item".</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- CAMPO DE OBSERVAÇÃO DO PEDIDO -->
+  <label for="orc_observacao">Observações do Pedido / Acabamento / Detalhes de Produção:</label>
+  <textarea id="orc_observacao" placeholder="Ex: Refilar sem borda branca, cliente traz arquivo em PDF/X-1a, embalar em pacotes de 100 unidades..." oninput="atualizarResumo(); autoSalvarRascunho();"></textarea>
+
+  <!-- CAMPO DE ANEXO DO DRIVE (PRINTS / ARTE) -->
+  <div class="box-anexo-drive">
+    <label style="margin-top:0; color:#0f766e;">📎 Anexar Arte / Print / PDF ao Pedido (Google Drive):</label>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+      <input type="file" id="input_anexo_drive" accept="image/*,.pdf" style="font-size:0.9rem;" onchange="gerenciarSelecaoArquivoAnexo(this)">
+      <span style="font-size:0.85rem; color:#64748b;">(Dica: Você também pode dar <strong>Ctrl + V</strong> para colar um print da tela!)</span>
+    </div>
+    <div id="status_upload_anexo" style="font-size:0.85rem; margin-top:8px; font-weight:600;"></div>
+    <input type="hidden" id="link_anexo_drive_salvo">
+  </div>
+
+  <!-- Desconto -->
+  <div id="box-desconto-container">
+    <label style="margin-top: 15px;">Aplicar Desconto Promocional (Sobre o Total):</label>
+    <div class="btn-group" id="group-desconto">
+      <button type="button" class="btn-toggle active" onclick="setDesconto(0, event)">Sem Desconto</button>
+      <button type="button" class="btn-toggle btn-desconto-opcao" onclick="setDesconto(5, event)">🏷️ 5% de Desconto</button>
+      <button type="button" class="btn-toggle btn-desconto-opcao" onclick="setDesconto(10, event)">🏷️ 10% de Desconto</button>
+    </div>
+  </div>
+
+  <!-- Preview e Ações -->
+  <div class="result-box">
+    <div class="preview-text" id="preview_texto">Adicione itens para visualizar o orçamento completo...</div>
+    <div class="btn-group-actions">
+      <button type="button" class="btn-copy" onclick="copiarOrcamento()">📋 Copiar Texto</button>
+      <button type="button" class="btn-pdf" id="btn_baixar_pdf" onclick="imprimirPDF()">📄 Gerar PDF</button>
+      <button type="button" class="btn-save-budget" id="btn_salvar_pedido_main" onclick="salvarOrcamentoNoHistorico()">💾 Salvar Pedido</button>
+      <button type="button" class="btn-make-note" id="btn_gerar_nota_preview" onclick="converterOrcamentoEmNota()">📝 Gerar Nota</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOLHA LIMPA DE IMPRESSÃO / PDF -->
+<div id="documento-pdf-print">
+  <div class="pdf-header">
+    <div class="pdf-logo-title">
+      <h1 style="color: #065f46;">IMPACT HAUS</h1>
+      <span>GRÁFICA E COMUNICAÇÃO VISUAL</span>
+    </div>
+    <div style="text-align: right; font-size: 12px;">
+      <strong style="font-size: 15px;">Orçamento N° <span id="pdf_orc_num">001</span></strong><br>
+      ImpactHaus Gráfica e Comunicação Visual<br>
+      Tel: 43 3324.8899
+    </div>
+  </div>
+
+  <div class="pdf-grid-info">
+    <div>
+      <strong>A/C:</strong> <span id="pdf_cli_nome">Cliente</span><br>
+      <strong>Telefone:</strong> <span id="pdf_cli_tel">-</span>
+    </div>
+    <div style="text-align: right;">
+      <strong>Londrina, <span id="pdf_data_extenso">21 de Setembro de 2026</span></strong>
+    </div>
+  </div>
+
+  <h3 style="margin-top: 16px; margin-bottom: 6px; font-size: 14px; text-transform: uppercase;">Detalhamento do Orçamento</h3>
+  <table class="pdf-table">
+    <thead>
+      <tr>
+        <th style="width: 40px; text-align: center;">Item</th>
+        <th>Descrição do Material / Serviço</th>
+        <th style="width: 60px; text-align: center;">Qtd</th>
+        <th style="width: 105px; text-align: right;">Unitário</th>
+        <th style="width: 105px; text-align: right;">Total</th>
+      </tr>
+    </thead>
+    <tbody id="pdf_tbody_itens"></tbody>
+  </table>
+
+  <div class="pdf-total-box">
+    <div id="pdf_desconto_linha" style="font-size: 12px; color: #555; display: none;"></div>
+    TOTAL: <span id="pdf_valor_total" style="color: #065f46;">R$ 0,00</span>
+  </div>
+
+  <div id="pdf_obs_box" class="pdf-obs hidden">
+    <strong>Observações:</strong> <span id="pdf_obs_texto"></span>
+  </div>
+
+  <div class="pdf-termos">
+    <strong>Termos e Condições Comerciais:</strong><br>
+    * Validade do orçamento: 30 dias;<br>
+    * Frete: A combinar;<br>
+    * Prazo de produção: A combinar;<br>
+    * Condição de pagamento: <span id="pdf_condicao_pagamento">A combinar</span>
+  </div>
+
+  <div class="pdf-dados-bancarios">
+    <strong>Dados Bancários para Pagamento / PIX:</strong><br>
+    Banco: 290 - PagSeguro<br>
+    Agência: 0001<br>
+    Conta: 73931126-4
+  </div>
+
+  <div class="pdf-footer">
+    <strong>IMPACT HAUS GRÁFICA E EDITORA LTDA.</strong><br>
+    CNPJ: 54.262.929/0001-18 — Av. Higienópolis, 311 - Centro - Londrina - Paraná - CEP: 86020-080
+  </div>
+</div>
+
+<!-- MODAL DE HISTÓRICO COM ABAS -->
+<div id="modalHistorico" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Histórico de Registros</h3>
+      <button class="close-btn" onclick="fecharHistorico()">&times;</button>
+    </div>
+
+    <div class="tabs-nav">
+      <button type="button" class="tab-btn active" id="tab_btn_pedidos" onclick="alternarAbaHistorico('pedidos')">📂 Pedidos / Orçamentos (<span id="tab_count_pedidos">0</span>)</button>
+      <button type="button" class="tab-btn" id="tab_btn_notas" onclick="alternarAbaHistorico('notas')">📝 Notas & Serviços (<span id="tab_count_notas">0</span>)</button>
+    </div>
+
+    <div class="search-bar-wrapper" style="margin-bottom: 15px;">
+      <input type="text" id="filtro_historico" class="search-input" placeholder="🔍 Buscar por número, cliente, observação..." oninput="filtrarHistorico()">
+    </div>
+
+    <!-- TABELA DE PEDIDOS -->
+    <div id="aba_conteudo_pedidos">
+      <table class="table-custom">
+        <thead>
+          <tr>
+            <th>Nº Pedido</th>
+            <th>Data</th>
+            <th>Cliente</th>
+            <th>Telefone</th>
+            <th>Pagamento</th>
+            <th>Total</th>
+            <th class="col-nota-header">Nota Vinculada</th>
+            <th style="text-align: right;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-historico"></tbody>
+      </table>
+    </div>
+
+    <!-- TABELA DE NOTAS -->
+    <div id="aba_conteudo_notas" class="hidden">
+      <div style="margin-bottom: 10px; display:flex; justify-content: flex-end;">
+        <button type="button" class="btn-action-top" style="background: #15803d; color: white;" onclick="abrirModalNovaNota()">+ Lançar Nova Nota / Boleto</button>
+      </div>
+      <table class="table-custom">
+        <thead>
+          <tr>
+            <th>Nº Nota</th>
+            <th>CPF/CNPJ</th>
+            <th>Data</th>
+            <th>Cliente</th>
+            <th>Vínculo Pedido</th>
+            <th>Descrição / Itens</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th style="text-align: right;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-historico-notas"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PARA CRIAR / EDITAR NOTA -->
+<div id="modalNota" class="modal-overlay hidden">
+  <div class="modal-content" style="max-width: 620px;">
+    <div class="modal-header">
+      <h3 id="titulo_modal_nota">📝 Lançar Nova Nota / Boleto</h3>
+      <button class="close-btn" onclick="fecharModalNota()">&times;</button>
+    </div>
+
+    <input type="hidden" id="nota_edit_id">
+
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; margin-bottom: 15px; position: relative;">
+      <label style="margin-top: 0; color: #0f766e;">🔗 Vincular a um Pedido / Orçamento existente:</label>
+      <input type="hidden" id="nota_vinculo_pedido">
+      
+      <div style="display: flex; gap: 6px; align-items: center; position: relative;">
+        <input type="text" id="input_busca_pedido_vinculo" placeholder="🔍 Digite o nº do pedido, cliente ou valor para buscar..." autocomplete="off" oninput="buscarSugestoesPedidos()" onfocus="buscarSugestoesPedidos()">
+        <button type="button" id="btn_limpar_vinculo" onclick="desvincularPedidoDaNota()" style="background: #f1f5f9; border: 1px solid var(--border); color: #64748b; padding: 9px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;" title="Desvincular pedido">✕</button>
+      </div>
+
+      <div id="dropdown_sugestoes_pedidos" class="dropdown-sugestoes hidden"></div>
+      
+      <small id="legenda_vinculo_pedido" style="color: #64748b; font-size: 0.8rem; display: block; margin-top: 5px;">
+        💡 Digite para pesquisar. Se não escolher nenhum, a nota será lançada como <strong>Avulsa</strong>.
+      </small>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <label>Número da Nota:</label>
+        <input type="text" id="nota_numero" placeholder="Ex: NT-001">
+      </div>
+      <div>
+        <label>CPF / CNPJ:</label>
+        <input type="text" id="nota_documento" placeholder="000.000.000-00 ou CNPJ">
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div>
+        <label>Cliente:</label>
+        <input type="text" id="nota_cliente" placeholder="Nome do cliente">
+      </div>
+      <div>
+        <label>Telefone:</label>
+        <input type="text" id="nota_telefone" placeholder="(00) 00000-0000">
+      </div>
+      <div>
+        <label>Valor Total (R$):</label>
+        <input type="number" id="nota_valor" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+
+    <div>
+      <label>Descrição do Serviço / Itens:</label>
+      <textarea id="nota_descricao" placeholder="Ex: 500 cartões de visita 4x0 couchê 300g..." style="min-height: 75px;"></textarea>
+    </div>
+
+    <div>
+      <label>Observações Adicionais:</label>
+      <textarea id="nota_observacao" placeholder="Ex: Prazo para amanhã às 16h, entregar para Michael..."></textarea>
+    </div>
+
+    <div>
+      <label>Status da Nota:</label>
+      <select id="nota_status">
+        <option value="pendente">⏳ Pendente (Fica na tela)</option>
+        <option value="concluido">✅ Feito / Concluído</option>
+      </select>
+    </div>
+
+    <div style="background: #fdf4ff; border: 1px solid #f0abfc; padding: 10px 12px; border-radius: 8px; margin-top: 14px;">
+      <label class="checkbox-inline" style="color: #86198f; margin: 0; font-size: 0.88rem;">
+        <input type="checkbox" id="chk_enviar_email_nota" checked> 
+        📧 Enviar e-mail silencioso automático para <strong>graficaimpacthaus@gmail.com</strong>
+      </label>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-reset-modal" onclick="fecharModalNota()">Cancelar</button>
+      <button type="button" class="btn-save-modal" id="btn_salvar_nota_submit" onclick="salvarNota()">💾 Salvar Nota / Boleto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE PREÇOS -->
+<div id="modalPrecos" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Configuração da Tabela de Preços (R$)</h3>
+      <button class="close-btn" onclick="fecharModalPrecos()">&times;</button>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+      Altere os valores abaixo conforme sua necessidade. Eles são sincronizados na nuvem!
+    </p>
+
+    <table class="table-precos">
+      <thead>
+        <tr>
+          <th>Material / Descrição</th>
+          <th>Novo Cliente</th>
+          <th>Cliente</th>
+          <th>Balcão</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-precos"></tbody>
+    </table>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-reset-modal" onclick="restaurarPadroes()">Restaurar Padrões</button>
+      <button type="button" class="btn-save-modal" onclick="salvarConfigPrecos()">💾 Salvar e Aplicar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ==========================================
+  // CONFIGURAÇÕES DE WEBHOOKS & EMAILJS
+  // ==========================================
+  const URL_WEBHOOK_DRIVE = "https://script.google.com/macros/s/AKfycbxcmEAT5OH-S9H3CRBxQPa6IGi50hLICB4gGMRJGA2lWdVczqMhjXG0YD0xuap5HYirgg/exec";
+  const EMAILJS_PUBLIC_KEY = "39cmhvk-G7te_79ye"; 
+  const EMAILJS_SERVICE_ID = "service_jlv0mfb"; 
+  const EMAILJS_TEMPLATE_ID = "template_o9dbngm";
+  const EMAIL_DESTINO = "graficaimpacthaus@gmail.com";
+
+  function inicializarEmailJS() {
+    if (window.emailjs && EMAILJS_PUBLIC_KEY) {
+      try {
+        emailjs.init(EMAILJS_PUBLIC_KEY);
+      } catch(e) {
+        console.warn("Aviso EmailJS:", e);
+      }
+    }
   }
-}
+
+  // ==========================================
+  // CONFIGURAÇÕES DO FIREBASE
+  // ==========================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyD6sCVnMGvr20_I48FUz6dDlFr3uB0v3hk",
+    authDomain: "atendimentospace-ee4f2.firebaseapp.com",
+    projectId: "atendimentospace-ee4f2",
+    storageBucket: "atendimentospace-ee4f2.firebasestorage.app",
+    messagingSenderId: "169974071506",
+    appId: "1:169974071506:web:e6cfac5a5f741086bbed0b",
+    measurementId: "G-NGSDREXZ24"
+  };
+
+  const EMAILS_PERMITIDOS = [
+    "atendimentospacespeed@gmail.com",
+    "devautomacaoimpact@gmail.com"
+  ];
+
+  let usuarioAtualEmail = "";
+  let ehAdmin = false;
+
+  let auth = null;
+  let db = null;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    auth = firebase.auth();
+    db = firebase.firestore();
+  } catch(e) {
+    console.error("Erro na inicialização do Firebase:", e);
+  }
+
+  function fazerLogin(event) {
+    if (event) event.preventDefault();
+
+    const email = document.getElementById('login_email').value.trim().toLowerCase();
+    const senha = document.getElementById('login_senha').value;
+    const feedback = document.getElementById('login-feedback');
+    const btn = document.getElementById('btn-entrar');
+
+    if (!email || !senha) {
+      feedback.style.display = 'block';
+      feedback.innerText = "Por favor, preencha o e-mail e a senha.";
+      return;
+    }
+
+    if (!EMAILS_PERMITIDOS.includes(email)) {
+      feedback.style.display = 'block';
+      feedback.innerText = "Acesso negado: Este e-mail não tem permissão no sistema.";
+      return;
+    }
+
+    btn.innerText = "⏳ Autenticando...";
+    btn.disabled = true;
+    feedback.style.display = 'none';
+
+    if (!auth) {
+      btn.innerText = "Entrar no Sistema";
+      btn.disabled = false;
+      feedback.style.display = 'block';
+      feedback.innerText = "Erro: Firebase não inicializou corretamente.";
+      return;
+    }
+
+    auth.signInWithEmailAndPassword(email, senha)
+      .then(() => {})
+      .catch((error) => {
+        btn.innerText = "Entrar no Sistema";
+        btn.disabled = false;
+        feedback.style.display = 'block';
+        
+        console.error("Erro ao autenticar:", error);
+
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+          feedback.innerText = "E-mail ou senha incorretos. Verifique os dados.";
+        } else if (error.code === 'auth/operation-not-allowed') {
+          feedback.innerText = "Erro: O método de e-mail/senha não está ativado no Console do Firebase!";
+        } else {
+          feedback.innerText = "Erro ao entrar: " + error.message;
+        }
+      });
+  }
+
+  function aplicarPermissoesInterface() {
+    const btnPrecos = document.getElementById('btn-menu-precos');
+    const btnLancarNotaTop = document.getElementById('btn-lancar-nota-top');
+    const btnGerarNotaPreview = document.getElementById('btn_gerar_nota_preview');
+    const tabBtnNotas = document.getElementById('tab_btn_notas');
+    const btnOpcoesDesconto = document.querySelectorAll('.btn-desconto-opcao');
+
+    if (!ehAdmin) {
+      if (btnPrecos) btnPrecos.classList.add('hidden');
+      if (btnLancarNotaTop) btnLancarNotaTop.classList.add('hidden');
+      if (btnGerarNotaPreview) btnGerarNotaPreview.classList.add('hidden');
+      if (tabBtnNotas) tabBtnNotas.classList.add('hidden');
+
+      btnOpcoesDesconto.forEach(btn => btn.classList.add('hidden'));
+
+      alternarAbaHistorico('pedidos');
+    } else {
+      if (btnPrecos) btnPrecos.classList.remove('hidden');
+      if (btnLancarNotaTop) btnLancarNotaTop.classList.remove('hidden');
+      if (btnGerarNotaPreview) btnGerarNotaPreview.classList.remove('hidden');
+      if (tabBtnNotas) tabBtnNotas.classList.remove('hidden');
+
+      btnOpcoesDesconto.forEach(btn => btn.classList.remove('hidden'));
+    }
+  }
+
+  if (auth) {
+    auth.onAuthStateChanged((user) => {
+      if (user && EMAILS_PERMITIDOS.includes(user.email.toLowerCase())) {
+        usuarioAtualEmail = user.email.toLowerCase();
+        ehAdmin = (usuarioAtualEmail === "atendimentospacespeed@gmail.com");
+
+        document.getElementById('tela-login').classList.add('hidden');
+        document.getElementById('app-container').classList.remove('hidden');
+        
+        aplicarPermissoesInterface();
+        sincronizarComFirebase();
+        restaurarRascunhoFormulario();
+      } else {
+        document.getElementById('tela-login').classList.remove('hidden');
+        document.getElementById('app-container').classList.add('hidden');
+      }
+    });
+  }
+
+  function encerrarSessao() {
+    if (auth) {
+      auth.signOut().then(() => {
+        window.location.reload();
+      });
+    } else {
+      window.location.reload();
+    }
+  }
+
+  const ITENS_CADASTRO = [
+    { key: "sulfite_A4_PB_F", desc: "Sulfite A4 PB - Frente" },
+    { key: "sulfite_A4_PB_FV", desc: "Sulfite A4 PB - Frente e Verso" },
+    { key: "sulfite_A4_Color_F", desc: "Sulfite A4 Color - Frente" },
+    { key: "sulfite_A4_Color_FV", desc: "Sulfite A4 Color - Frente e Verso" },
+
+    { key: "sulfite_A3_PB_F", desc: "Sulfite A3 PB - Frente" },
+    { key: "sulfite_A3_PB_FV", desc: "Sulfite A3 PB - Frente e Verso" },
+    { key: "sulfite_A3_Color_F", desc: "Sulfite A3 Color - Frente" },
+    { key: "sulfite_A3_Color_FV", desc: "Sulfite A3 Color - Frente e Verso" },
+
+    { key: "couche_a5_115g_F", desc: "Couchê A5 115g - Frente" },
+    { key: "couche_a5_115g_FV", desc: "Couchê A5 115g - Frente e Verso" },
+    { key: "couche_a5_180g_F", desc: "Couchê A5 180g - Frente" },
+    { key: "couche_a5_180g_FV", desc: "Couchê A5 180g - Frente e Verso" },
+    { key: "couche_a5_250g_F", desc: "Couchê A5 250g - Frente" },
+    { key: "couche_a5_250g_FV", desc: "Couchê A5 250g - Frente e Verso" },
+
+    { key: "couche_a4_115g_F", desc: "Couchê A4 115g - Frente" },
+    { key: "couche_a4_115g_FV", desc: "Couchê A4 115g - Frente e Verso" },
+    { key: "couche_a4_180g_F", desc: "Couchê A4 180g - Frente" },
+    { key: "couche_a4_180g_FV", desc: "Couchê A4 180g - Frente e Verso" },
+    { key: "couche_a4_250g_F", desc: "Couchê A4 250g - Frente" },
+    { key: "couche_a4_250g_FV", desc: "Couchê A4 250g - Frente e Verso" },
+
+    { key: "couche_a3_115g_F", desc: "Couchê Super A3 115g - Frente" },
+    { key: "couche_a3_115g_FV", desc: "Couchê Super A3 115g - Frente e Verso" },
+    { key: "couche_a3_180g_F", desc: "Couchê Super A3 180g - Frente" },
+    { key: "couche_a3_180g_FV", desc: "Couchê Super A3 180g - Frente e Verso" },
+    { key: "couche_a3_250g_F", desc: "Couchê Super A3 250g - Frente" },
+    { key: "couche_a3_250g_FV", desc: "Couchê Super A3 250g - Frente e Verso" },
+
+    { key: "adesivo_folha_A5", desc: "Adesivo Folha A5" },
+    { key: "adesivo_folha_A4", desc: "Adesivo Folha A4" },
+    { key: "adesivo_folha_A3", desc: "Adesivo Folha A3" },
+
+    { key: "m2_adesivo_vinil", desc: "Adesivo Vinil (m²)" },
+    { key: "m2_banner", desc: "Banner (m²)" },
+    { key: "m2_placa_pvc", desc: "Placa PVC (m²)" },
+    { key: "m2_papel_fotografico", desc: "Papel Fotográfico (m²)" },
+
+    { key: "encadernacao_espiral", desc: "Encadernação: Espiral (un)" },
+    { key: "encadernacao_wireo", desc: "Encadernação: Wire-o (un)" },
+    { key: "encadernacao_brochura", desc: "Encadernação: Brochura (un)" },
+    { key: "encadernacao_capadura", desc: "Encadernação: Capa Dura (un)" }
+  ];
+
+  const PRECOS_PADRAO = {
+    sulfite_A4_PB_F:        { novo_cliente: 0.25, cliente: 0.20, balcao: 0.30 },
+    sulfite_A4_PB_FV:       { novo_cliente: 0.20, cliente: 0.18, balcao: 0.25 },
+    sulfite_A4_Color_F:     { novo_cliente: 0.95, cliente: 0.90, balcao: 1.20 },
+    sulfite_A4_Color_FV:    { novo_cliente: 0.85, cliente: 0.80, balcao: 1.00 },
+
+    sulfite_A3_PB_F:        { novo_cliente: 2.00, cliente: 1.80, balcao: 2.50 },
+    sulfite_A3_PB_FV:       { novo_cliente: 1.80, cliente: 1.50, balcao: 2.20 },
+    sulfite_A3_Color_F:     { novo_cliente: 3.50, cliente: 3.20, balcao: 4.00 },
+    sulfite_A3_Color_FV:    { novo_cliente: 3.25, cliente: 3.00, balcao: 3.80 },
+
+    couche_a5_115g_F:       { novo_cliente: 0.90, cliente: 0.70, balcao: 1.10 },
+    couche_a5_115g_FV:      { novo_cliente: 1.30, cliente: 1.00, balcao: 1.50 },
+    couche_a5_180g_F:       { novo_cliente: 1.10, cliente: 0.90, balcao: 1.30 },
+    couche_a5_180g_FV:      { novo_cliente: 1.50, cliente: 1.20, balcao: 1.70 },
+    couche_a5_250g_F:       { novo_cliente: 1.30, cliente: 1.00, balcao: 1.50 },
+    couche_a5_250g_FV:      { novo_cliente: 1.80, cliente: 1.40, balcao: 2.10 },
+
+    couche_a4_115g_F:       { novo_cliente: 1.50, cliente: 1.20, balcao: 1.80 },
+    couche_a4_115g_FV:      { novo_cliente: 2.20, cliente: 1.80, balcao: 2.50 },
+    couche_a4_180g_F:       { novo_cliente: 1.80, cliente: 1.50, balcao: 2.00 },
+    couche_a4_180g_FV:      { novo_cliente: 2.50, cliente: 2.00, balcao: 2.80 },
+    couche_a4_250g_F:       { novo_cliente: 2.20, cliente: 1.80, balcao: 2.50 },
+    couche_a4_250g_FV:      { novo_cliente: 3.00, cliente: 2.50, balcao: 3.50 },
+
+    couche_a3_115g_F:       { novo_cliente: 3.50, cliente: 3.00, balcao: 4.00 },
+    couche_a3_115g_FV:      { novo_cliente: 5.00, cliente: 4.20, balcao: 6.00 },
+    couche_a3_180g_F:       { novo_cliente: 4.00, cliente: 3.50, balcao: 4.80 },
+    couche_a3_180g_FV:      { novo_cliente: 6.00, cliente: 5.00, balcao: 7.00 },
+    couche_a3_250g_F:       { novo_cliente: 5.00, cliente: 4.20, balcao: 6.00 },
+    couche_a3_250g_FV:      { novo_cliente: 7.50, cliente: 6.50, balcao: 8.50 },
+
+    adesivo_folha_A5:       { novo_cliente: 2.80, cliente: 2.30, balcao: 3.20 },
+    adesivo_folha_A4:       { novo_cliente: 4.50, cliente: 3.80, balcao: 5.00 },
+    adesivo_folha_A3:       { novo_cliente: 8.50, cliente: 7.50, balcao: 10.00 },
+
+    m2_adesivo_vinil:       { novo_cliente: 75.00, cliente: 65.00, balcao: 80.00 },
+    m2_banner:              { novo_cliente: 75.00, cliente: 65.00, balcao: 80.00 },
+    m2_placa_pvc:           { novo_cliente: 150.00, cliente: 140.00, balcao: 160.00 },
+    m2_papel_fotografico:   { novo_cliente: 95.00, cliente: 85.00, balcao: 110.00 },
+
+    encadernacao_espiral:   { novo_cliente: 5.00,  cliente: 5.00,  balcao: 5.00 },
+    encadernacao_wireo:     { novo_cliente: 30.00, cliente: 30.00, balcao: 30.00 },
+    encadernacao_brochura:  { novo_cliente: 30.00, cliente: 25.00, balcao: 30.00 },
+    encadernacao_capadura:  { novo_cliente: 75.00, cliente: 70.00, balcao: 75.00 }
+  };
+
+  let TABELA_PRECOS = carregarPrecos();
+  let perfilAtual = 'novo_cliente';
+  let categoriaAtual = 'sulfite';
+  let descontoAtual = 0;
+  let formaPagamentoAtual = 'adiantado';
+  let abaAtualHistorico = 'pedidos';
+
+  let itensNoOrcamento = [];
+  let itemEditandoIndex = null;
+  let orcamentoAtualId = null;
+  let notaVinculadaAoOrcamentoAtual = null;
+
+  let arquivoAnexoSelecionado = null;
+
+  // LÓGICA DE UPLOAD PARA GOOGLE DRIVE
+  function gerenciarSelecaoArquivoAnexo(inputElement) {
+    if (inputElement.files && inputElement.files[0]) {
+      arquivoAnexoSelecionado = inputElement.files[0];
+      const statusDiv = document.getElementById('status_upload_anexo');
+      statusDiv.style.color = '#15803d';
+      statusDiv.innerHTML = `📄 Arquivo carregado: <strong>${arquivoAnexoSelecionado.name}</strong> (Será enviado ao salvar)`;
+    }
+  }
+
+  // EVENTO DE COLAR PRINT DA TELA (CTRL + V)
+  window.addEventListener('paste', e => {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (let item of items) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const blob = item.getAsFile();
+        const nomeArquivo = `print_${Date.now()}.png`;
+        arquivoAnexoSelecionado = new File([blob], nomeArquivo, { type: blob.type });
+        
+        const statusDiv = document.getElementById('status_upload_anexo');
+        statusDiv.style.color = '#15803d';
+        statusDiv.innerHTML = `🖼️ Print capturado da área de transferência: <strong>${nomeArquivo}</strong>`;
+        break;
+      }
+    }
+  });
+
+  async function uploadArquivoParaDrive(file) {
+    if (!file) return null;
+
+    const statusDiv = document.getElementById('status_upload_anexo');
+    statusDiv.style.color = '#0284c7';
+    statusDiv.innerHTML = `⏳ Enviando arquivo para o Google Drive... Aguarde...`;
+
+    try {
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(file);
+      });
+
+      const payload = {
+        fileName: `${numeroOrcamentoAtual}_${Date.now()}_${file.name}`,
+        mimeType: file.type,
+        fileBase64: base64
+      };
+
+      const res = await fetch(URL_WEBHOOK_DRIVE, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const json = await res.json();
+      
+      if (json.status === 'success' && json.fileUrl) {
+        statusDiv.style.color = '#15803d';
+        statusDiv.innerHTML = `✅ Arquivo hospedado no Drive com sucesso!`;
+        return json.fileUrl;
+      } else {
+        statusDiv.style.color = '#b91c1c';
+        statusDiv.innerHTML = `⚠️ Erro retornado pelo Apps Script: ${json.message || 'Erro desconhecido'}`;
+        return null;
+      }
+    } catch(e) {
+      console.error("Erro na comunicação com o Drive:", e);
+      statusDiv.style.color = '#b91c1c';
+      statusDiv.innerHTML = `⚠️ Falha ao conectar ao Apps Script. Verifique se autorizou a execução na conta do Drive!`;
+      return null;
+    }
+  }
+
+  // AUTO-SALVAMENTO DO ORÇAMENTO (RASCUNHO)
+  function autoSalvarRascunho() {
+    const rascunho = {
+      cli_nome: document.getElementById('cli_nome').value,
+      cli_tel: document.getElementById('cli_tel').value,
+      orc_observacao: document.getElementById('orc_observacao').value,
+      perfilAtual,
+      formaPagamentoAtual,
+      boleto_vencimento: document.getElementById('boleto_vencimento').value,
+      boleto_status: document.getElementById('boleto_status').value,
+      descontoAtual,
+      itensNoOrcamento,
+      orcamentoAtualId,
+      numeroOrcamentoAtual,
+      linkAnexoSalvo: document.getElementById('link_anexo_drive_salvo').value
+    };
+    localStorage.setItem('impact_haus_rascunho_orcamento', JSON.stringify(rascunho));
+  }
+
+  function restaurarRascunhoFormulario() {
+    const salvo = localStorage.getItem('impact_haus_rascunho_orcamento');
+    if (!salvo) return;
+    try {
+      const data = JSON.parse(salvo);
+      if (!data) return;
+
+      if (data.cli_nome) document.getElementById('cli_nome').value = data.cli_nome;
+      if (data.cli_tel) document.getElementById('cli_tel').value = data.cli_tel;
+      if (data.orc_observacao) document.getElementById('orc_observacao').value = data.orc_observacao;
+
+      if (data.perfilAtual) setPerfil(data.perfilAtual);
+      if (data.formaPagamentoAtual) setFormaPagamento(data.formaPagamentoAtual);
+
+      if (data.boleto_vencimento) document.getElementById('boleto_vencimento').value = data.boleto_vencimento;
+      if (data.boleto_status) document.getElementById('boleto_status').value = data.boleto_status;
+
+      if (data.descontoAtual !== undefined) setDesconto(data.descontoAtual);
+      if (data.itensNoOrcamento && Array.isArray(data.itensNoOrcamento)) {
+        itensNoOrcamento = data.itensNoOrcamento;
+      }
+
+      if (data.orcamentoAtualId) orcamentoAtualId = data.orcamentoAtualId;
+      if (data.numeroOrcamentoAtual) {
+        numeroOrcamentoAtual = data.numeroOrcamentoAtual;
+        atualizarTagNumero();
+      }
+
+      if (data.linkAnexoSalvo) {
+        document.getElementById('link_anexo_drive_salvo').value = data.linkAnexoSalvo;
+        document.getElementById('status_upload_anexo').innerHTML = `📎 Anexo anexado: <a href="${data.linkAnexoSalvo}" target="_blank">Ver Arquivo no Drive</a>`;
+      }
+
+      renderizarTabela();
+      atualizarResumo();
+    } catch(e) {
+      console.warn("Erro ao restaurar rascunho:", e);
+    }
+  }
+
+  function limparRascunhoNavegador() {
+    localStorage.removeItem('impact_haus_rascunho_orcamento');
+  }
+
+  function limparCamposOrcamentoForm() {
+    if (itensNoOrcamento.length > 0 || document.getElementById('cli_nome').value || document.getElementById('cli_tel').value) {
+      if (!confirm("Deseja realmente limpar todos os campos e o carrinho deste orçamento?")) {
+        return;
+      }
+    }
+    limparRascunhoNavegador();
+    iniciarNovoOrcamento(false);
+  }
+
+  function sincronizarComFirebase() {
+    if (!db) return;
+
+    db.collection('configuracoes').doc('tabela_precos').get().then((doc) => {
+      if (doc.exists) {
+        TABELA_PRECOS = { ...PRECOS_PADRAO, ...doc.data() };
+        localStorage.setItem('impact_haus_precos', JSON.stringify(TABELA_PRECOS));
+      }
+    });
+
+    db.collection('orcamentos').orderBy('numRaw', 'desc').get().then((querySnapshot) => {
+      let lista = [];
+      querySnapshot.forEach((doc) => {
+        lista.push(doc.data());
+      });
+      if (lista.length > 0) {
+        localStorage.setItem('impact_haus_historico', JSON.stringify(lista));
+        let maxNum = Math.max(...lista.map(o => o.numRaw || 0));
+        localStorage.setItem('impact_haus_seq_num', maxNum.toString());
+        if (!orcamentoAtualId && !localStorage.getItem('impact_haus_rascunho_orcamento')) {
+          numeroOrcamentoAtual = formatarNumeroOrcamento(maxNum + 1);
+          atualizarTagNumero();
+        }
+      }
+      atualizarContadorHistorico();
+      verificarAlertasBoletos();
+      verificarNotaVinculadaDoOrcamentoAtual();
+    });
+
+    db.collection('notas').orderBy('dataRaw', 'desc').get().then((querySnapshot) => {
+      let listaNotas = [];
+      querySnapshot.forEach((doc) => {
+        listaNotas.push(doc.data());
+      });
+      if (listaNotas.length > 0) {
+        localStorage.setItem('impact_haus_notas', JSON.stringify(listaNotas));
+      }
+      renderizarPainelNotasPendentes();
+      atualizarContadoresAbas();
+      verificarNotaVinculadaDoOrcamentoAtual();
+    });
+  }
+
+  function getProximoNumero() {
+    let ultimoNum = parseInt(localStorage.getItem('impact_haus_seq_num') || "0", 10);
+    return ultimoNum + 1;
+  }
+
+  function formatarNumeroOrcamento(num) {
+    return String(num).padStart(3, '0');
+  }
+
+  let numeroOrcamentoAtual = formatarNumeroOrcamento(getProximoNumero());
+
+  function atualizarTagNumero() {
+    document.getElementById('tag_orcamento_num').innerText = `#${numeroOrcamentoAtual}`;
+  }
+
+  function carregarPrecos() {
+    const salvos = localStorage.getItem('impact_haus_precos');
+    if (salvos) {
+      try { return { ...PRECOS_PADRAO, ...JSON.parse(salvos) }; } catch(e) {}
+    }
+    return JSON.parse(JSON.stringify(PRECOS_PADRAO));
+  }
+
+  function setPerfil(perfil, event) {
+    perfilAtual = perfil;
+    const btns = document.querySelectorAll('#group-cliente .btn-toggle');
+    btns.forEach(b => b.classList.remove('active'));
+    if (event) {
+      event.currentTarget.classList.add('active');
+    } else {
+      const el = document.getElementById(perfil === 'cliente' ? 'btn_perfil_frequente' : (perfil === 'balcao' ? 'btn_perfil_balcao' : 'btn_perfil_novo'));
+      if (el) el.classList.add('active');
+    }
+    recalcularTodosOsItens();
+    renderizarTabela();
+    atualizarResumo();
+    atualizarPreviewAproveitamento();
+    autoSalvarRascunho();
+  }
+
+  function setFormaPagamento(forma, event) {
+    formaPagamentoAtual = forma;
+    const btns = document.querySelectorAll('#group-pagamento .btn-toggle');
+    btns.forEach(b => b.classList.remove('active'));
+    if (event) event.currentTarget.classList.add('active');
+
+    const boxBoleto = document.getElementById('box-campos-boleto');
+    if (forma === 'boleto') {
+      boxBoleto.classList.remove('hidden');
+      if (!document.getElementById('boleto_vencimento').value) {
+        const d = new Date();
+        d.setDate(d.getDate() + 7);
+        document.getElementById('boleto_vencimento').value = d.toISOString().split('T')[0];
+      }
+    } else {
+      boxBoleto.classList.add('hidden');
+    }
+    atualizarResumo();
+    autoSalvarRascunho();
+  }
+
+  function setDesconto(pct, event) {
+    if (!ehAdmin && pct > 0) return;
+    descontoAtual = pct;
+    const btns = document.querySelectorAll('#group-desconto .btn-toggle');
+    btns.forEach(b => b.classList.remove('active'));
+    if (event) event.currentTarget.classList.add('active');
+    atualizarResumo();
+    autoSalvarRascunho();
+  }
+
+  function setCategoria(cat, event) {
+    categoriaAtual = cat;
+    const btns = document.querySelectorAll('#group-categoria .btn-toggle');
+    btns.forEach(b => b.classList.remove('active'));
+    if (event) event.currentTarget.classList.add('active');
+
+    document.getElementById('box-sulfite').classList.add('hidden');
+    document.getElementById('box-personalizado').classList.add('hidden');
+    document.getElementById('box-couche-a5').classList.add('hidden');
+    document.getElementById('box-couche-a4').classList.add('hidden');
+    document.getElementById('box-couche-a3').classList.add('hidden');
+    document.getElementById('box-adesivo-folha').classList.add('hidden');
+    document.getElementById('box-m2').classList.add('hidden');
+    
+    const boxFace = document.getElementById('box-face');
+    const boxApostila = document.getElementById('box-apostila-wrapper');
+    const lblQtd = document.getElementById('lbl_qtd');
+
+    if (cat === 'sulfite') {
+      document.getElementById('box-sulfite').classList.remove('hidden');
+      boxFace.classList.remove('hidden');
+      boxApostila.classList.remove('hidden');
+      lblQtd.innerText = document.getElementById('chk_apostila').checked ? "Quantidade de Exemplares:" : "Quantidade Total:";
+    } else if (cat === 'personalizado') {
+      document.getElementById('box-personalizado').classList.remove('hidden');
+      boxApostila.classList.add('hidden');
+      verificarMudancaBasePersonalizada();
+      lblQtd.innerText = "Quantidade Total de Peças:";
+      atualizarPreviewAproveitamento();
+    } else if (cat === 'couche_a5') {
+      document.getElementById('box-couche-a5').classList.remove('hidden');
+      boxFace.classList.remove('hidden');
+      boxApostila.classList.remove('hidden');
+      lblQtd.innerText = document.getElementById('chk_apostila').checked ? "Quantidade de Exemplares:" : "Quantidade Total:";
+    } else if (cat === 'couche_a4') {
+      document.getElementById('box-couche-a4').classList.remove('hidden');
+      boxFace.classList.remove('hidden');
+      boxApostila.classList.remove('hidden');
+      lblQtd.innerText = document.getElementById('chk_apostila').checked ? "Quantidade de Exemplares:" : "Quantidade Total:";
+    } else if (cat === 'couche_a3') {
+      document.getElementById('box-couche-a3').classList.remove('hidden');
+      boxFace.classList.remove('hidden');
+      boxApostila.classList.remove('hidden');
+      lblQtd.innerText = document.getElementById('chk_apostila').checked ? "Quantidade de Exemplares:" : "Quantidade Total:";
+    } else if (cat === 'adesivo_folha') {
+      document.getElementById('box-adesivo-folha').classList.remove('hidden');
+      boxFace.classList.add('hidden');
+      boxApostila.classList.add('hidden');
+      lblQtd.innerText = "Quantidade de Folhas:";
+    } else if (cat === 'm2') {
+      document.getElementById('box-m2').classList.remove('hidden');
+      boxFace.classList.add('hidden');
+      boxApostila.classList.add('hidden');
+      lblQtd.innerText = "Quantidade de Peças:";
+    }
+  }
+
+  function verificarMudancaBasePersonalizada() {
+    const base = document.getElementById('pers_folha_base').value;
+    const selectMat = document.getElementById('pers_material_tipo');
+    const boxFace = document.getElementById('box-face');
+
+    if (base === 'vinil_m2') {
+      selectMat.innerHTML = `<option value="vinil">Adesivo Vinil (Metragem m²)</option>`;
+      boxFace.classList.add('hidden');
+    } else {
+      selectMat.innerHTML = `
+        <option value="adesivo">Adesivo em Folha</option>
+        <option value="couche_115g">Couchê 115g</option>
+        <option value="couche_180g">Couchê 180g</option>
+        <option value="couche_250g">Couchê 250g</option>
+      `;
+      boxFace.classList.remove('hidden');
+    }
+    atualizarPreviewAproveitamento();
+  }
+
+  function calcularAproveitamento(largItem, altItem, folhaBase) {
+    if (largItem <= 0 || altItem <= 0) return { cabem: 0, orientacao: 'normal' };
+
+    let maxL = (folhaBase === 'A4') ? 20.0 : 31.0;
+    let maxA = (folhaBase === 'A4') ? 28.7 : 46.0;
+
+    let cabemNormal = Math.floor(maxL / largItem) * Math.floor(maxA / altItem);
+    let cabemGirado = Math.floor(maxL / altItem) * Math.floor(maxA / largItem);
+
+    if (cabemGirado > cabemNormal) {
+      return { cabem: cabemGirado, orientacao: 'girado' };
+    }
+    return { cabem: cabemNormal, orientacao: 'normal' };
+  }
+
+  function atualizarPreviewAproveitamento() {
+    if (categoriaAtual !== 'personalizado') return;
+
+    const larg = parseFloat(document.getElementById('pers_largura').value) || 0;
+    const alt = parseFloat(document.getElementById('pers_altura').value) || 0;
+    const base = document.getElementById('pers_folha_base').value;
+    const qtdTotal = parseFloat(document.getElementById('qtd_itens').value) || 1;
+    const box = document.getElementById('pers_box_aproveitamento');
+
+    if (base === 'vinil_m2') {
+      const areaUnM2 = (larg * alt) / 10000;
+      const areaTotalM2 = areaUnM2 * qtdTotal;
+      const precoM2 = TABELA_PRECOS['m2_adesivo_vinil']?.[perfilAtual] || 0;
+      const totalValor = areaTotalM2 * precoM2;
+
+      box.innerHTML = `
+        📐 <strong>Cálculo do Material:</strong><br>
+        Tamanho da peça: <strong>${larg} x ${alt} cm</strong>.<br>
+        Para <strong>${qtdTotal} peças</strong>, total estimado: <strong>${formatarMoeda(totalValor)}</strong>.
+      `;
+      return;
+    }
+
+    const aproveitamento = calcularAproveitamento(larg, alt, base);
+
+    if (aproveitamento.cabem === 0) {
+      box.innerHTML = `<span style="color:#b91c1c;">⚠️ A peça (${larg} x ${alt} cm) é maior que o limite de impressão da folha ${base}!</span>`;
+      return;
+    }
+
+    const folhasNecessarias = Math.ceil(qtdTotal / aproveitamento.cabem);
+    const totalPecasProduzidas = folhasNecessarias * aproveitamento.cabem;
+    const sobra = totalPecasProduzidas - qtdTotal;
+
+    box.innerHTML = `
+      📐 <strong>Aproveitamento de Produção:</strong> Cabem <strong>${aproveitamento.cabem} peças</strong> por folha ${base}.<br>
+      📄 Para <strong>${qtdTotal} peças</strong>, serão necessárias <strong>${folhasNecessarias} folhas</strong> rodadas (produz ${totalPecasProduzidas} un${sobra > 0 ? `, sobra de ${sobra} un` : ''}).
+    `;
+  }
+
+  function verificarTelefoneCliente() {
+    const telRaw = document.getElementById('cli_tel').value.replace(/\D/g, '');
+    const alertaDiv = document.getElementById('alerta_cliente_existente');
+    
+    if (telRaw.length < 8) {
+      alertaDiv.classList.add('hidden');
+      return;
+    }
+
+    const historico = carregarHistoricoLista();
+    const clienteExistente = historico.find(o => {
+      const numSalvo = (o.tel || '').replace(/\D/g, '');
+      return numSalvo.length >= 8 && numSalvo === telRaw;
+    });
+
+    if (clienteExistente) {
+      document.getElementById('nome_cliente_encontrado').innerText = clienteExistente.nome;
+      alertaDiv.classList.remove('hidden');
+      if (!document.getElementById('cli_nome').value) {
+        document.getElementById('cli_nome').value = clienteExistente.nome;
+      }
+    } else {
+      alertaDiv.classList.add('hidden');
+    }
+  }
+
+  function aplicarPerfilFrequenteAutomatico() {
+    setPerfil('cliente', null);
+    document.getElementById('alerta_cliente_existente').classList.add('hidden');
+  }
+
+  function toggleApostila() {
+    const chk = document.getElementById('chk_apostila');
+    const campos = document.getElementById('apostila_campos');
+    const lblQtd = document.getElementById('lbl_qtd');
+
+    if (chk.checked) {
+      campos.classList.remove('hidden');
+      lblQtd.innerText = "Quantidade de Exemplares:";
+    } else {
+      campos.classList.add('hidden');
+      lblQtd.innerText = "Quantidade Total:";
+    }
+  }
+
+  function toggleOpcoesEncadernacao() {
+    const chk = document.getElementById('chk_encadernacao');
+    const boxTipo = document.getElementById('box_tipo_encadernacao');
+    if (chk.checked) {
+      boxTipo.classList.remove('hidden');
+    } else {
+      boxTipo.classList.add('hidden');
+    }
+  }
+
+  function toggleOpcoesLivreto() {
+    const chk = document.getElementById('chk_livreto');
+    const boxTipo = document.getElementById('box_tipo_livreto');
+    if (chk.checked) {
+      boxTipo.classList.remove('hidden');
+    } else {
+      boxTipo.classList.add('hidden');
+    }
+  }
+
+  function toggleLaminacao() {
+    const chk = document.getElementById('chk_laminado');
+    const boxCampos = document.getElementById('box_campos_laminacao');
+    if (chk.checked) {
+      boxCampos.classList.remove('hidden');
+    } else {
+      boxCampos.classList.add('hidden');
+    }
+  }
+
+  function formatarMoeda(valor) {
+    return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function capturarDadosDoItem() {
+    const qtd = parseFloat(document.getElementById('qtd_itens').value) || 1;
+    const face = document.getElementById('impressao_face').value;
+    const ehApostila = (categoriaAtual === 'sulfite' || categoriaAtual.startsWith('couche')) && document.getElementById('chk_apostila').checked;
+    const paginas = parseFloat(document.getElementById('apostila_paginas').value) || 1;
+    const encadernado = document.getElementById('chk_encadernacao').checked;
+    const tipoEncadernacao = document.getElementById('sel_tipo_encadernacao').value;
+    const ehLivreto = document.getElementById('chk_livreto').checked;
+    const tipoLivreto = document.getElementById('sel_tipo_livreto').value;
+    const ehLaminado = document.getElementById('chk_laminado').checked;
+    const valorLaminacao = parseFloat(document.getElementById('valor_laminacao_por_lado').value) || 0;
+
+    const item = {
+      categoria: categoriaAtual,
+      qtd: qtd,
+      face: face,
+      ehApostila: ehApostila,
+      paginas: paginas,
+      encadernado: encadernado,
+      tipoEncadernacao: tipoEncadernacao,
+      ehLivreto: ehLivreto,
+      tipoLivreto: tipoLivreto,
+      ehLaminado: ehLaminado,
+      valorLaminacao: valorLaminacao,
+      sulfite_formato: document.getElementById('sulfite_formato').value,
+      sulfite_cor: document.getElementById('sulfite_cor').value,
+      couche_a5_gram: document.getElementById('couche_a5_gram').value,
+      couche_a4_gram: document.getElementById('couche_a4_gram').value,
+      couche_a3_gram: document.getElementById('couche_a3_gram').value,
+      adesivo_folha_tam: document.getElementById('adesivo_folha_tam').value,
+      m2_tipo: document.getElementById('m2_tipo').value,
+      m2_largura: parseFloat(document.getElementById('m2_largura').value) || 0,
+      m2_altura: parseFloat(document.getElementById('m2_altura').value) || 0,
+      pers_largura: parseFloat(document.getElementById('pers_largura').value) || 0,
+      pers_altura: parseFloat(document.getElementById('pers_altura').value) || 0,
+      pers_folha_base: document.getElementById('pers_folha_base').value,
+      pers_material_tipo: document.getElementById('pers_material_tipo').value
+    };
+
+    return processarCalculoItem(item);
+  }
+
+  function processarCalculoItem(item, precoManual = null) {
+    const faceTxt = item.face === 'FV' ? 'Frente e Verso' : 'Somente Frente';
+    let chavePreco = "";
+    let descMaterial = "";
+    let precoUnitario = 0;
+    let multiplicadorLados = (item.face === 'FV') ? 2 : 1;
+
+    if (item.categoria === 'sulfite') {
+      chavePreco = `sulfite_${item.sulfite_formato}_${item.sulfite_cor}_${item.face}`;
+      descMaterial = `Sulfite ${item.sulfite_formato} (${item.sulfite_cor === 'PB' ? 'Preto e Branco' : 'Colorido'}, ${faceTxt})`;
+      precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+
+      if (item.ehLaminado) {
+        precoUnitario += (item.valorLaminacao * multiplicadorLados);
+        descMaterial += ` + Laminação`;
+      }
+
+    } else if (item.categoria === 'personalizado') {
+      if (item.pers_folha_base === 'vinil_m2') {
+        const areaUnM2 = (item.pers_largura * item.pers_altura) / 10000;
+        const areaTotalM2 = areaUnM2 * item.qtd;
+        const precoM2 = TABELA_PRECOS['m2_adesivo_vinil']?.[perfilAtual] || 0;
+        const subtotalCalculado = areaTotalM2 * precoM2;
+        precoUnitario = subtotalCalculado / item.qtd;
+
+        descMaterial = `Adesivo Vinil (${item.pers_largura}x${item.pers_altura}cm)`;
+        if (item.ehLaminado) {
+          precoUnitario += (item.valorLaminacao * multiplicadorLados);
+          descMaterial += ` + Laminação`;
+        }
+        item.descricao = descMaterial;
+        item.precoUnitario = precoManual !== null ? precoManual : precoUnitario;
+        item.subtotal = item.precoUnitario * item.qtd;
+        return item;
+      }
+
+      const aproveitamento = calcularAproveitamento(item.pers_largura, item.pers_altura, item.pers_folha_base);
+      const cabem = aproveitamento.cabem;
+
+      if (cabem === 0) {
+        alert("Dimensões maiores do que o limite da folha!");
+        item.descricao = `Peça Personalizada (${item.pers_largura}x${item.pers_altura}cm) - Dimensão Inválida`;
+        item.precoUnitario = 0;
+        item.subtotal = 0;
+        return item;
+      }
+
+      let precoFolha = 0;
+      let nomeMat = "";
+
+      if (item.pers_material_tipo === 'adesivo') {
+        chavePreco = (item.pers_folha_base === 'A4') ? 'adesivo_folha_A4' : 'adesivo_folha_A3';
+        nomeMat = "Adesivo em Folha";
+        precoFolha = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+      } else {
+        let gram = item.pers_material_tipo.replace('couche_', '');
+        let prefixo = (item.pers_folha_base === 'A4') ? 'couche_a4' : 'couche_a3';
+        chavePreco = `${prefixo}_${gram}_${item.face}`;
+        nomeMat = `Couchê ${gram} (${faceTxt})`;
+        precoFolha = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+      }
+
+      if (item.ehLaminado) {
+        precoFolha += (item.valorLaminacao * multiplicadorLados);
+      }
+
+      const folhasNecessarias = Math.ceil(item.qtd / cabem);
+      const subtotalCalculado = folhasNecessarias * precoFolha;
+      precoUnitario = subtotalCalculado / item.qtd;
+
+      descMaterial = `${nomeMat} (${item.pers_largura}x${item.pers_altura}cm)${item.ehLaminado ? ' + Laminação' : ''}`;
+      item.descricao = descMaterial;
+      item.precoUnitario = precoManual !== null ? precoManual : precoUnitario;
+      item.subtotal = item.precoUnitario * item.qtd;
+      return item;
+
+    } else if (item.categoria === 'couche_a5') {
+      chavePreco = `couche_a5_${item.couche_a5_gram}_${item.face}`;
+      descMaterial = `Couchê A5 ${item.couche_a5_gram} (${faceTxt})`;
+      precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+
+      if (item.ehLaminado) {
+        precoUnitario += (item.valorLaminacao * multiplicadorLados);
+        descMaterial += ` + Laminação`;
+      }
+
+    } else if (item.categoria === 'couche_a4') {
+      chavePreco = `couche_a4_${item.couche_a4_gram}_${item.face}`;
+      descMaterial = `Couchê A4 ${item.couche_a4_gram} (${faceTxt})`;
+      precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+
+      if (item.ehLaminado) {
+        precoUnitario += (item.valorLaminacao * multiplicadorLados);
+        descMaterial += ` + Laminação`;
+      }
+
+    } else if (item.categoria === 'couche_a3') {
+      chavePreco = `couche_a3_${item.couche_a3_gram}_${item.face}`;
+      descMaterial = `Couchê Super A3 ${item.couche_a3_gram} (${faceTxt})`;
+      precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+
+      if (item.ehLaminado) {
+        precoUnitario += (item.valorLaminacao * multiplicadorLados);
+        descMaterial += ` + Laminação`;
+      }
+
+    } else if (item.categoria === 'adesivo_folha') {
+      chavePreco = `adesivo_folha_${item.adesivo_folha_tam}`;
+      descMaterial = `Adesivo em Folha ${item.adesivo_folha_tam}`;
+      precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+
+      if (item.ehLaminado) {
+        precoUnitario += item.valorLaminacao;
+        descMaterial += ` + Laminação`;
+      }
+
+    } else if (item.categoria === 'm2') {
+      const areaM2 = (item.m2_largura * item.m2_altura) / 10000;
+      chavePreco = `m2_${item.m2_tipo}`;
+      const precoM2 = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+      precoUnitario = areaM2 * precoM2;
+
+      let nomesM2 = {
+        adesivo_vinil: "Adesivo Vinil",
+        banner: "Banner",
+        placa_pvc: "Placa PVC",
+        papel_fotografico: "Papel Fotográfico"
+      };
+      descMaterial = `${nomesM2[item.m2_tipo]} (${item.m2_largura}cm x ${item.m2_altura}cm)`;
+
+      if (item.ehLaminado) {
+        precoUnitario += item.valorLaminacao;
+        descMaterial += ` + Laminação`;
+      }
+    }
+
+    if (item.ehApostila) {
+      let qtdFolhasFisicas = item.paginas;
+      let qtdCobrada = item.paginas;
+      let infoLivreto = "";
+      let precoFolhaCalculo = precoUnitario;
+
+      if (item.ehLivreto) {
+        qtdFolhasFisicas = Math.ceil(item.paginas / 4);
+        qtdCobrada = qtdFolhasFisicas * 2;
+
+        if (item.tipoLivreto === 'A5_fechado') {
+          infoLivreto = ` [Livreto A5 Fechado - ${qtdFolhasFisicas} fls A4 FV (${qtdCobrada} impressões)]`;
+          if (item.categoria === 'sulfite') {
+            let chaveA4 = `sulfite_A4_${item.sulfite_cor}_F`;
+            precoFolhaCalculo = TABELA_PRECOS[chaveA4]?.[perfilAtual] || precoUnitario;
+          } else if (item.categoria.startsWith('couche')) {
+            let gram = item.couche_a4_gram || item.couche_a5_gram || item.couche_a3_gram || '115g';
+            let chaveA4 = `couche_a4_${gram}_F`;
+            precoFolhaCalculo = TABELA_PRECOS[chaveA4]?.[perfilAtual] || precoUnitario;
+          }
+        } else {
+          infoLivreto = ` [Livreto A4 Fechado - ${qtdFolhasFisicas} fls Super A3 FV (${qtdCobrada} impressões)]`;
+          if (item.categoria === 'sulfite') {
+            let chaveA3 = `sulfite_A3_${item.sulfite_cor}_F`;
+            precoFolhaCalculo = TABELA_PRECOS[chaveA3]?.[perfilAtual] || precoUnitario;
+          } else if (item.categoria.startsWith('couche')) {
+            let gram = item.couche_a3_gram || item.couche_a4_gram || item.couche_a5_gram || '115g';
+            let chaveA3 = `couche_a3_${gram}_F`;
+            precoFolhaCalculo = TABELA_PRECOS[chaveA3]?.[perfilAtual] || precoUnitario;
+          }
+        }
+
+        if (item.ehLaminado) {
+          precoFolhaCalculo += item.valorLaminacao;
+        }
+      }
+
+      let custoImpressao = precoFolhaCalculo * qtdCobrada;
+      let custoEncadernacao = 0;
+      let nomeEncadernacao = "";
+
+      if (item.encadernado) {
+        const nomesEnc = { espiral: "Espiral", wireo: "Wire-o", brochura: "Brochura", capadura: "Capa Dura" };
+        const chaveEnc = `encadernacao_${item.tipoEncadernacao}`;
+        custoEncadernacao = TABELA_PRECOS[chaveEnc]?.[perfilAtual] || 0;
+        nomeEncadernacao = ` + Encadernação ${nomesEnc[item.tipoEncadernacao] || ''}`;
+      }
+
+      precoUnitario = custoImpressao + custoEncadernacao;
+      descMaterial = `Apostila/Livro: ${descMaterial} [${item.paginas} pág(s)]${infoLivreto}${nomeEncadernacao}`;
+    }
+
+    item.descricao = descMaterial;
+    item.precoUnitario = precoManual !== null ? precoManual : precoUnitario;
+    item.subtotal = item.precoUnitario * item.qtd;
+
+    return item;
+  }
+
+  function recalcularTodosOsItens() {
+    itensNoOrcamento = itensNoOrcamento.map(it => processarCalculoItem(it, it.precoUnitario));
+  }
+
+  function alterarPrecoUnitarioManual(index, novoValor) {
+    if (!ehAdmin) return;
+
+    const valorNum = parseFloat(novoValor) || 0;
+    itensNoOrcamento[index].precoUnitario = valorNum;
+    itensNoOrcamento[index].subtotal = valorNum * itensNoOrcamento[index].qtd;
+    
+    const linhaSubtotal = document.getElementById(`subtotal_item_${index}`);
+    if (linhaSubtotal) {
+      linhaSubtotal.innerText = formatarMoeda(itensNoOrcamento[index].subtotal);
+    }
+    
+    atualizarResumo();
+    autoSalvarRascunho();
+  }
+
+  function salvarItemNoCarrinho() {
+    const item = capturarDadosDoItem();
+
+    if (item.precoUnitario === 0 && item.subtotal === 0 && item.categoria === 'personalizado') {
+      return;
+    }
+
+    if (itemEditandoIndex !== null) {
+      item.precoUnitario = itensNoOrcamento[itemEditandoIndex].precoUnitario;
+      item.subtotal = item.precoUnitario * item.qtd;
+      itensNoOrcamento[itemEditandoIndex] = item;
+      cancelarEdicao();
+    } else {
+      itensNoOrcamento.push(item);
+    }
+
+    renderizarTabela();
+    atualizarResumo();
+    autoSalvarRascunho();
+  }
+
+  function renderizarTabela() {
+    const tbody = document.getElementById('tbody-itens-carrinho');
+    tbody.innerHTML = '';
+
+    if (itensNoOrcamento.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum item adicionado ainda. Configure o material acima e clique em "Adicionar Item".</td></tr>`;
+      return;
+    }
+
+    itensNoOrcamento.forEach((it, idx) => {
+      const tr = document.createElement('tr');
+      const disabledAttr = ehAdmin ? '' : 'disabled readonly';
+      
+      tr.innerHTML = `
+        <td><strong>${idx + 1}</strong></td>
+        <td>${it.descricao}</td>
+        <td>${it.qtd}</td>
+        <td>
+          <input type="number" step="0.01" value="${it.precoUnitario.toFixed(2)}" ${disabledAttr} style="width: 100px; padding: 5px; font-size: 0.9rem;" oninput="alterarPrecoUnitarioManual(${idx}, this.value)">
+        </td>
+        <td><strong id="subtotal_item_${idx}">${formatarMoeda(it.subtotal)}</strong></td>
+        <td class="actions">
+          <button type="button" class="action-btn edit" onclick="editarItem(${idx})" title="Editar Item">✏️ Editar</button>
+          <button type="button" class="action-btn clone" onclick="clonarItem(${idx})" title="Clonar Item">📋 Clonar</button>
+          <button type="button" class="action-btn del" onclick="excluirItem(${idx})" title="Excluir Item">🗑️</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function clonarItem(index) {
+    const itemOriginal = itensNoOrcamento[index];
+    const copia = JSON.parse(JSON.stringify(itemOriginal));
+    itensNoOrcamento.push(processarCalculoItem(copia, itemOriginal.precoUnitario));
+    renderizarTabela();
+    atualizarResumo();
+    autoSalvarRascunho();
+  }
+
+  function excluirItem(index) {
+    if (confirm(`Remover o item ${index + 1} do orçamento?`)) {
+      if (itemEditandoIndex === index) {
+        cancelarEdicao();
+      }
+      itensNoOrcamento.splice(index, 1);
+      renderizarTabela();
+      atualizarResumo();
+      autoSalvarRascunho();
+    }
+  }
+
+  function editarItem(index) {
+    itemEditandoIndex = index;
+    const it = itensNoOrcamento[index];
+
+    setCategoria(it.categoria);
+    const catBtns = document.querySelectorAll('#group-categoria .btn-toggle');
+    catBtns.forEach(b => {
+      b.classList.toggle('active', b.getAttribute('onclick').includes(`'${it.categoria}'`));
+    });
+
+    document.getElementById('qtd_itens').value = it.qtd;
+    document.getElementById('impressao_face').value = it.face;
+
+    if (it.categoria === 'sulfite') {
+      document.getElementById('sulfite_formato').value = it.sulfite_formato;
+      document.getElementById('sulfite_cor').value = it.sulfite_cor;
+    } else if (it.categoria === 'personalizado') {
+      document.getElementById('pers_largura').value = it.pers_largura;
+      document.getElementById('pers_altura').value = it.pers_altura;
+      document.getElementById('pers_folha_base').value = it.pers_folha_base;
+      verificarMudancaBasePersonalizada();
+      document.getElementById('pers_material_tipo').value = it.pers_material_tipo;
+      atualizarPreviewAproveitamento();
+    } else if (it.categoria === 'couche_a5') {
+      document.getElementById('couche_a5_gram').value = it.couche_a5_gram;
+    } else if (it.categoria === 'couche_a4') {
+      document.getElementById('couche_a4_gram').value = it.couche_a4_gram;
+    } else if (it.categoria === 'couche_a3') {
+      document.getElementById('couche_a3_gram').value = it.couche_a3_gram;
+    } else if (it.categoria === 'adesivo_folha') {
+      document.getElementById('adesivo_folha_tam').value = it.adesivo_folha_tam;
+    } else if (it.categoria === 'm2') {
+      document.getElementById('m2_tipo').value = it.m2_tipo;
+      document.getElementById('m2_largura').value = it.m2_largura;
+      document.getElementById('m2_altura').value = it.m2_altura;
+    }
+
+    document.getElementById('chk_apostila').checked = it.ehApostila;
+    document.getElementById('apostila_paginas').value = it.paginas;
+    document.getElementById('chk_encadernacao').checked = it.encadernado;
+    if (it.tipoEncadernacao) {
+      document.getElementById('sel_tipo_encadernacao').value = it.tipoEncadernacao;
+    }
+    document.getElementById('chk_livreto').checked = it.ehLivreto || false;
+    if (it.tipoLivreto) {
+      document.getElementById('sel_tipo_livreto').value = it.tipoLivreto;
+    }
+
+    document.getElementById('chk_laminado').checked = it.ehLaminado || false;
+    document.getElementById('valor_laminacao_por_lado').value = it.valorLaminacao || "0.00";
+
+    toggleApostila();
+    toggleOpcoesEncadernacao();
+    toggleOpcoesLivreto();
+    toggleLaminacao();
+
+    document.getElementById('titulo-box-item').innerText = `Editando Item #${index + 1}`;
+    document.getElementById('badge-modo').style.display = 'inline-block';
+    document.getElementById('btn_salvar_item').innerText = "💾 Salvar Alterações do Item";
+    document.getElementById('btn_cancelar_edicao').classList.remove('hidden');
+
+    document.getElementById('box-builder-anchor').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function cancelarEdicao() {
+    itemEditandoIndex = null;
+    document.getElementById('titulo-box-item').innerText = "Configurar Material";
+    document.getElementById('badge-modo').style.display = 'none';
+    document.getElementById('btn_salvar_item').innerText = "➕ Adicionar Item ao Orçamento";
+    document.getElementById('btn_cancelar_edicao').classList.add('hidden');
+  }
+
+  function atualizarResumo() {
+    const nome = document.getElementById('cli_nome').value.trim() || "Não informado";
+    const tel = document.getElementById('cli_tel').value.trim() || "Não informado";
+    const obs = document.getElementById('orc_observacao').value.trim();
+    const hoje = new Date();
+    const dataStr = hoje.toLocaleDateString('pt-BR');
+
+    if (itensNoOrcamento.length === 0) {
+      document.getElementById('preview_texto').innerText = `Orçamento #${numeroOrcamentoAtual}\n\nAdicione itens acima para visualizar o orçamento completo...`;
+      return;
+    }
+
+    const somaGeral = itensNoOrcamento.reduce((acc, it) => acc + it.subtotal, 0);
+
+    let valorDesconto = 0;
+    let totalFinal = somaGeral;
+
+    if (descontoAtual > 0 && ehAdmin) {
+      valorDesconto = (somaGeral * descontoAtual) / 100;
+      totalFinal = somaGeral - valorDesconto;
+    }
+
+    let textoItens = "";
+    itensNoOrcamento.forEach((it, idx) => {
+      textoItens += 
+`*Item ${idx + 1}:* ${it.descricao}
+  • Quantidade: ${it.qtd} un
+  • Unitário: ${formatarMoeda(it.precoUnitario)}
+  • Subtotal: ${formatarMoeda(it.subtotal)}\n\n`;
+    });
+
+    let linhaSubtotal = "";
+    let linhaDesconto = "";
+    if (descontoAtual > 0 && ehAdmin) {
+      linhaSubtotal = `💵 *Subtotal:* ${formatarMoeda(somaGeral)}\n`;
+      linhaDesconto = `🏷️ *Desconto Promocional (${descontoAtual}%):* - ${formatarMoeda(valorDesconto)}\n`;
+    }
+
+    let textoPagamento = "";
+    if (formaPagamentoAtual === 'adiantado') {
+      textoPagamento = "💳 *Pagamento:* Adiantado";
+    } else if (formaPagamentoAtual === 'na_hora') {
+      textoPagamento = "💳 *Pagamento:* Acerto na hora da entrega/retirada";
+    } else if (formaPagamentoAtual === 'boleto') {
+      const v = document.getElementById('boleto_vencimento').value;
+      const vStr = v ? v.split('-').reverse().join('/') : "A combinar";
+      const statusStr = document.getElementById('boleto_status').value === 'pago' ? '(Pago)' : '(Pendente)';
+      textoPagamento = `💳 *Pagamento:* Boleto Bancário\n📅 *Vencimento:* ${vStr} ${statusStr}`;
+    }
+
+    let linhaObs = obs ? `\n📌 *Obs:* ${obs}\n` : "";
+
+    const textoFinal = 
+`📄 *ORÇAMENTO DE IMPRESSÃO #${numeroOrcamentoAtual}*
+----------------------------------------
+👤 *Cliente:* ${nome}
+📞 *Telefone:* ${tel}
+📅 *Data:* ${dataStr}
+----------------------------------------
+${textoItens.trim()}
+----------------------------------------
+${linhaSubtotal}${linhaDesconto}💰 *VALOR TOTAL:* ${formatarMoeda(totalFinal)}
+${textoPagamento}${linhaObs}
+----------------------------------------
+*Gráfica Impact Haus*`;
+
+    document.getElementById('preview_texto').innerText = textoFinal;
+  }
+
+  function copiarOrcamento() {
+    const texto = document.getElementById('preview_texto').innerText;
+    if (itensNoOrcamento.length === 0) {
+      alert("⚠️ Adicione pelo menos um item ao orçamento antes de copiar!");
+      return;
+    }
+
+    navigator.clipboard.writeText(texto).then(() => {
+      alert("✅ Orçamento copiado com sucesso! Agora é só colar (Ctrl + V).");
+    }).catch(err => {
+      alert("Erro ao copiar. Selecione o texto e copie manualmente.");
+    });
+  }
+
+  function imprimirPDF() {
+    if (itensNoOrcamento.length === 0) {
+      alert("⚠️ Adicione itens antes de gerar o PDF!");
+      return;
+    }
+
+    const nome = document.getElementById('cli_nome').value.trim() || "Cliente Balcão";
+    const tel = document.getElementById('cli_tel').value.trim() || "Não informado";
+    const obs = document.getElementById('orc_observacao').value.trim();
+
+    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const d = new Date();
+    const dataExtenso = `${String(d.getDate()).padStart(2, '0')} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+
+    document.getElementById('pdf_orc_num').innerText = numeroOrcamentoAtual;
+    document.getElementById('pdf_cli_nome').innerText = nome;
+    document.getElementById('pdf_cli_tel').innerText = tel;
+    document.getElementById('pdf_data_extenso').innerText = dataExtenso;
+
+    const pdfObsBox = document.getElementById('pdf_obs_box');
+    if (obs) {
+      pdfObsBox.classList.remove('hidden');
+      document.getElementById('pdf_obs_texto').innerText = obs;
+    } else {
+      pdfObsBox.classList.add('hidden');
+    }
+
+    const pdfTbody = document.getElementById('pdf_tbody_itens');
+    pdfTbody.innerHTML = '';
+    itensNoOrcamento.forEach((it, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="text-align: center;">${idx + 1}</td>
+        <td><strong>${it.descricao}</strong></td>
+        <td style="text-align: center;">${it.qtd}</td>
+        <td style="text-align: right;">${formatarMoeda(it.precoUnitario)}</td>
+        <td style="text-align: right;"><strong>${formatarMoeda(it.subtotal)}</strong></td>
+      `;
+      pdfTbody.appendChild(tr);
+    });
+
+    const somaGeral = itensNoOrcamento.reduce((acc, it) => acc + it.subtotal, 0);
+    let valorDesconto = 0;
+    let totalFinal = somaGeral;
+
+    if (descontoAtual > 0 && ehAdmin) {
+      valorDesconto = (somaGeral * descontoAtual) / 100;
+      totalFinal = somaGeral - valorDesconto;
+      document.getElementById('pdf_desconto_linha').style.display = 'block';
+      document.getElementById('pdf_desconto_linha').innerHTML = `Subtotal: ${formatarMoeda(somaGeral)} | Desconto (${descontoAtual}%): - ${formatarMoeda(valorDesconto)}`;
+    } else {
+      document.getElementById('pdf_desconto_linha').style.display = 'none';
+    }
+
+    document.getElementById('pdf_valor_total').innerText = formatarMoeda(totalFinal);
+
+    let condicaoTxt = "À vista adiantado";
+    if (formaPagamentoAtual === 'na_hora') condicaoTxt = "Acerto na entrega / retirada";
+    if (formaPagamentoAtual === 'boleto') {
+      const venc = document.getElementById('boleto_vencimento').value;
+      condicaoTxt = `Boleto Bancário (Vencimento: ${venc ? venc.split('-').reverse().join('/') : 'A combinar'})`;
+    }
+    document.getElementById('pdf_condicao_pagamento').innerText = condicaoTxt;
+
+    const tituloOriginal = document.title;
+    document.title = `orçamento_${numeroOrcamentoAtual}`;
+
+    window.print();
+
+    setTimeout(() => {
+      document.title = tituloOriginal;
+    }, 1000);
+  }
+
+  function carregarHistoricoLista() {
+    const dados = localStorage.getItem('impact_haus_historico');
+    if (dados) {
+      try { return JSON.parse(dados); } catch(e) {}
+    }
+    return [];
+  }
+
+  function carregarNotasLista() {
+    const dados = localStorage.getItem('impact_haus_notas');
+    if (dados) {
+      try { return JSON.parse(dados); } catch(e) {}
+    }
+    return [];
+  }
+
+  function verificarAlertasBoletos() {
+    if (!ehAdmin) {
+      const painel = document.getElementById('painel_alertas_boletos');
+      if (painel) painel.classList.add('hidden');
+      return;
+    }
+
+    const historico = carregarHistoricoLista();
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+
+    const boletosAlerta = [];
+
+    historico.forEach(orc => {
+      if (orc.formaPagamento === 'boleto' && orc.boletoStatus === 'pendente' && orc.boletoVencimento) {
+        const [ano, mes, dia] = orc.boletoVencimento.split('-');
+        const dtVenc = new Date(ano, mes - 1, dia);
+        dtVenc.setHours(0,0,0,0);
+
+        const diffTempo = dtVenc.getTime() - hoje.getTime();
+        const diffDias = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
+
+        if (diffDias <= 5) {
+          boletosAlerta.push({
+            ...orc,
+            diasRestantes: diffDias,
+            vencFormatado: `${dia}/${mes}/${ano}`
+          });
+        }
+      }
+    });
+
+    const painel = document.getElementById('painel_alertas_boletos');
+    const container = document.getElementById('lista_alertas_boletos');
+
+    if (boletosAlerta.length === 0) {
+      painel.classList.add('hidden');
+      return;
+    }
+
+    painel.classList.remove('hidden');
+    container.innerHTML = '';
+
+    boletosAlerta.forEach(b => {
+      let msgVenc = "";
+      if (b.diasRestantes < 0) {
+        msgVenc = `<span style="color:#dc2626; font-weight:bold;">VENCEU HÁ ${Math.abs(b.diasRestantes)} DIA(S) (${b.vencFormatado})</span>`;
+      } else if (b.diasRestantes === 0) {
+        msgVenc = `<span style="color:#b91c1c; font-weight:bold;">VENCE HOJE! (${b.vencFormatado})</span>`;
+      } else {
+        msgVenc = `<span style="font-weight:bold;">Vence em ${b.diasRestantes} dia(s) (${b.vencFormatado})</span>`;
+      }
+
+      const btnAnexo = b.linkAnexoDrive ? `<a href="${b.linkAnexoDrive}" target="_blank" class="action-btn anexo-btn" title="Abrir Anexo no Drive">📎 Anexo</a>` : '';
+
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'alerta-item';
+      itemDiv.innerHTML = `
+        <div>
+          <strong>#${b.numero} - ${b.nome}</strong> (${b.tel || 'Sem telefone'}) — Total: <strong>${formatarMoeda(b.total)}</strong> — ${msgVenc}
+        </div>
+        <div>
+          ${btnAnexo}
+          <button type="button" class="action-btn pay" onclick="darBaixaBoleto('${b.id}')">Marcar como Pago</button>
+          <button type="button" class="action-btn edit" onclick="carregarOrcamentoDoHistorico('${b.id}')">Ver Detalhes</button>
+        </div>
+      `;
+      container.appendChild(itemDiv);
+    });
+  }
+
+  function darBaixaBoleto(id) {
+    if (!ehAdmin) return;
+
+    const historico = carregarHistoricoLista();
+    const orc = historico.find(o => o.id === id);
+    if (!orc) return;
+
+    if (confirm(`Confirmar o recebimento do boleto referente ao orçamento #${orc.numero} (${orc.nome})?`)) {
+      orc.boletoStatus = 'pago';
+      localStorage.setItem('impact_haus_historico', JSON.stringify(historico));
+      
+      if (db) {
+        db.collection('orcamentos').doc(id).update({ boletoStatus: 'pago' });
+      }
+
+      verificarAlertasBoletos();
+      filtrarHistorico();
+      alert("✅ Boleto marcado como pago!");
+    }
+  }
+
+  // ==========================================
+  // SALVAR PEDIDO NO HISTÓRICO COM UPLOAD BLOQUEANTE
+  // ==========================================
+  async function salvarOrcamentoNoHistorico() {
+    if (itensNoOrcamento.length === 0) {
+      alert("⚠️ Adicione itens antes de salvar o orçamento!");
+      return;
+    }
+
+    const btnSalvarMain = document.getElementById('btn_salvar_pedido_main');
+    const textoOriginalBotao = btnSalvarMain.innerText;
+
+    let urlDriveFinal = document.getElementById('link_anexo_drive_salvo').value || null;
+
+    // 1. SE HOUVER UM NOVO ARQUIVO SELECIONADO, AGUARDA COMPLETAR O UPLOAD
+    if (arquivoAnexoSelecionado) {
+      btnSalvarMain.innerText = "⏳ Enviando arquivo ao Google Drive... Aguarde!";
+      btnSalvarMain.disabled = true;
+
+      try {
+        const resUpload = await uploadArquivoParaDrive(arquivoAnexoSelecionado);
+        if (resUpload) {
+          urlDriveFinal = resUpload;
+          document.getElementById('link_anexo_drive_salvo').value = urlDriveFinal;
+        } else {
+          alert("⚠️ Falha ao enviar o arquivo para o Google Drive! O salvamento foi cancelado para que você não perca o anexo. Tente novamente.");
+          btnSalvarMain.innerText = textoOriginalBotao;
+          btnSalvarMain.disabled = false;
+          return; // Interrompe o salvamento para não salvar sem o anexo
+        }
+      } catch (err) {
+        console.error("Erro durante o upload:", err);
+        alert("⚠️ Erro de conexão durante o upload para o Drive. Verifique sua conexão e tente novamente.");
+        btnSalvarMain.innerText = textoOriginalBotao;
+        btnSalvarMain.disabled = false;
+        return;
+      }
+    }
+
+    // 2. AGORA QUE O UPLOAD CONCLUIU, ATUALIZA A MENSAGEM E SALVA O PEDIDO
+    btnSalvarMain.innerText = "💾 Salvando pedido...";
+
+    const historico = carregarHistoricoLista();
+    const nome = document.getElementById('cli_nome').value.trim() || "Cliente sem nome";
+    const tel = document.getElementById('cli_tel').value.trim() || "";
+    const observacao = document.getElementById('orc_observacao').value.trim();
+    const somaGeral = itensNoOrcamento.reduce((acc, it) => acc + it.subtotal, 0);
+    const descAplicar = ehAdmin ? descontoAtual : 0;
+    const valorDesconto = (somaGeral * descAplicar) / 100;
+    const totalFinal = somaGeral - valorDesconto;
+    const dataHora = new Date().toLocaleString('pt-BR');
+
+    const boletoVenc = formaPagamentoAtual === 'boleto' ? document.getElementById('boleto_vencimento').value : null;
+    const boletoStat = formaPagamentoAtual === 'boleto' ? document.getElementById('boleto_status').value : null;
+
+    let orcamentoSalvar;
+    let numSalvoAviso = "";
+
+    if (orcamentoAtualId) {
+      const indexExistente = historico.findIndex(o => o.id === orcamentoAtualId);
+      if (indexExistente !== -1) {
+        historico[indexExistente] = {
+          ...historico[indexExistente],
+          nome,
+          tel,
+          perfil: perfilAtual,
+          formaPagamento: formaPagamentoAtual,
+          boletoVencimento: boletoVenc,
+          boletoStatus: boletoStat,
+          desconto: descAplicar,
+          observacao: observacao,
+          itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
+          total: totalFinal,
+          data: dataHora,
+          linkAnexoDrive: urlDriveFinal
+        };
+        orcamentoSalvar = historico[indexExistente];
+        numSalvoAviso = historico[indexExistente].numero;
+      }
+    } else {
+      const proxNum = getProximoNumero();
+      orcamentoSalvar = {
+        id: 'orc_' + Date.now(),
+        numero: formatarNumeroOrcamento(proxNum),
+        numRaw: proxNum,
+        nome,
+        tel,
+        perfil: perfilAtual,
+        formaPagamento: formaPagamentoAtual,
+        boletoVencimento: boletoVenc,
+        boletoStatus: boletoStat,
+        desconto: descAplicar,
+        observacao: observacao,
+        itens: JSON.parse(JSON.stringify(itensNoOrcamento)),
+        total: totalFinal,
+        data: dataHora,
+        linkAnexoDrive: urlDriveFinal
+      };
+      historico.unshift(orcamentoSalvar);
+      localStorage.setItem('impact_haus_seq_num', proxNum.toString());
+      numSalvoAviso = orcamentoSalvar.numero;
+    }
+
+    localStorage.setItem('impact_haus_historico', JSON.stringify(historico));
+
+    if (db && orcamentoSalvar) {
+      await db.collection('orcamentos').doc(orcamentoSalvar.id).set(orcamentoSalvar);
+    }
+
+    btnSalvarMain.innerText = textoOriginalBotao;
+    btnSalvarMain.disabled = false;
+
+    atualizarContadorHistorico();
+    verificarAlertasBoletos();
+
+    alert(`✅ Pedido/Orçamento #${numSalvoAviso} salvo com sucesso!`);
+    limparRascunhoNavegador();
+    iniciarNovoOrcamento(false);
+  }
+
+  function converterOrcamentoEmNota() {
+    if (!ehAdmin) {
+      alert("⚠️ Você não tem permissão para gerar notas.");
+      return;
+    }
+
+    if (itensNoOrcamento.length === 0) {
+      alert("⚠️ Adicione ao menos um item para gerar uma nota!");
+      return;
+    }
+
+    if (!orcamentoAtualId) {
+      const confirmar = confirm("Este orçamento ainda não foi salvo como pedido. Deseja salvar o pedido agora e gerar a nota vinculada a ele?");
+      if (!confirmar) return;
+
+      salvarOrcamentoNoHistorico();
+      return;
+    }
+
+    const nome = document.getElementById('cli_nome').value.trim() || "Cliente Balcão";
+    const tel = document.getElementById('cli_tel').value.trim() || "";
+    const obs = document.getElementById('orc_observacao').value.trim();
+    const somaGeral = itensNoOrcamento.reduce((acc, it) => acc + it.subtotal, 0);
+    const totalFinal = somaGeral - ((somaGeral * descontoAtual) / 100);
+
+    let descItens = itensNoOrcamento.map((it, i) => `${it.qtd}x ${it.descricao}`).join(' | ');
+
+    configurarVinculoPedidoPorId(orcamentoAtualId);
+
+    document.getElementById('nota_edit_id').value = "";
+    document.getElementById('nota_numero').value = `NT-${(carregarNotasLista().length + 1).toString().padStart(3, '0')}`;
+    document.getElementById('nota_documento').value = "";
+    document.getElementById('nota_cliente').value = nome;
+    document.getElementById('nota_telefone').value = tel;
+    document.getElementById('nota_valor').value = totalFinal.toFixed(2);
+    document.getElementById('nota_descricao').value = descItens;
+    document.getElementById('nota_observacao').value = obs;
+    document.getElementById('nota_status').value = 'pendente';
+    document.getElementById('titulo_modal_nota').innerText = "📝 Gerar Nota Vinculada ao Pedido #" + numeroOrcamentoAtual;
+
+    document.getElementById('modalNota').classList.remove('hidden');
+  }
+
+  function iniciarNovoOrcamento(confirmar) {
+    if (confirmar && itensNoOrcamento.length > 0) {
+      if (!confirm("Deseja iniciar um novo orçamento em branco?")) {
+        return;
+      }
+    }
+    itensNoOrcamento = [];
+    orcamentoAtualId = null;
+    notaVinculadaAoOrcamentoAtual = null;
+    arquivoAnexoSelecionado = null;
+    document.getElementById('banner_nota_vinculada').classList.add('hidden');
+
+    numeroOrcamentoAtual = formatarNumeroOrcamento(getProximoNumero());
+    document.getElementById('cli_nome').value = "";
+    document.getElementById('cli_tel').value = "";
+    document.getElementById('orc_observacao').value = "";
+    document.getElementById('input_anexo_drive').value = "";
+    document.getElementById('link_anexo_drive_salvo').value = "";
+    document.getElementById('status_upload_anexo').innerHTML = "";
+    document.getElementById('alerta_cliente_existente').classList.add('hidden');
+    descontoAtual = 0;
+    
+    setFormaPagamento('adiantado');
+    const btnsPag = document.querySelectorAll('#group-pagamento .btn-toggle');
+    btnsPag.forEach((b, i) => b.classList.toggle('active', i === 0));
+
+    const btnsDesc = document.querySelectorAll('#group-desconto .btn-toggle');
+    btnsDesc.forEach((b, i) => b.classList.toggle('active', i === 0));
+
+    document.getElementById('chk_laminado').checked = false;
+    document.getElementById('valor_laminacao_por_lado').value = "0.00";
+    toggleLaminacao();
+
+    atualizarTagNumero();
+    cancelarEdicao();
+    renderizarTabela();
+    atualizarResumo();
+    limparRascunhoNavegador();
+  }
+
+  // AUTOCOMPLETE DIGITÁVEL PARA SELEÇÃO DE PEDIDO
+  function buscarSugestoesPedidos() {
+    const termo = (document.getElementById('input_busca_pedido_vinculo').value || '').trim().toLowerCase();
+    const dropdown = document.getElementById('dropdown_sugestoes_pedidos');
+    const pedidos = carregarHistoricoLista();
+
+    if (pedidos.length === 0) {
+      dropdown.innerHTML = `<div style="padding:10px; color:#64748b; font-size:0.85rem; text-align:center;">Nenhum pedido salvo ainda.</div>`;
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    const filtrados = pedidos.filter(p => {
+      const numMatch = (p.numero || '').toLowerCase().includes(termo) || String(p.numRaw || '').includes(termo);
+      const nomeMatch = (p.nome || '').toLowerCase().includes(termo);
+      const telMatch = (p.tel || '').toLowerCase().includes(termo);
+      const valMatch = String(p.total || '').includes(termo);
+      return numMatch || nomeMatch || telMatch || valMatch;
+    });
+
+    if (filtrados.length === 0) {
+      dropdown.innerHTML = `<div style="padding:10px; color:#64748b; font-size:0.85rem; text-align:center;">Nenhum pedido encontrado.</div>`;
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    dropdown.innerHTML = '';
+    filtrados.forEach(p => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'item-sugestao-pedido';
+      itemDiv.innerHTML = `
+        <div>
+          <strong>#${p.numero}</strong> - ${p.nome || 'Cliente Balcão'} <small style="color:#64748b;">(${p.tel || 'Sem tel'})</small>
+        </div>
+        <div style="font-weight:bold; color:#15803d;">
+          ${formatarMoeda(p.total)}
+        </div>
+      `;
+      itemDiv.onclick = function() {
+        selecionarPedidoParaVinculoObj(p);
+      };
+      dropdown.appendChild(itemDiv);
+    });
+
+    dropdown.classList.remove('hidden');
+  }
+
+  function fecharSugestoesPedidos() {
+    setTimeout(() => {
+      const dropdown = document.getElementById('dropdown_sugestoes_pedidos');
+      if (dropdown) dropdown.classList.add('hidden');
+    }, 200);
+  }
+
+  function selecionarPedidoParaVinculoObj(p) {
+    document.getElementById('nota_vinculo_pedido').value = p.id;
+    document.getElementById('input_busca_pedido_vinculo').value = `Pedido #${p.numero} - ${p.nome || 'Balcão'} (${formatarMoeda(p.total)})`;
+    document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
+
+    const legenda = document.getElementById('legenda_vinculo_pedido');
+    legenda.innerHTML = `✅ <strong>Vinculado ao Pedido #${p.numero}</strong>. Os dados foram preenchidos automaticamente.`;
+    legenda.style.color = '#15803d';
+
+    if (!document.getElementById('nota_cliente').value) {
+      document.getElementById('nota_cliente').value = p.nome || '';
+    }
+    if (!document.getElementById('nota_telefone').value) {
+      document.getElementById('nota_telefone').value = p.tel || '';
+    }
+    if (!document.getElementById('nota_valor').value) {
+      document.getElementById('nota_valor').value = p.total ? Number(p.total).toFixed(2) : '';
+    }
+    if (!document.getElementById('nota_descricao').value && p.itens && p.itens.length > 0) {
+      document.getElementById('nota_descricao').value = p.itens.map(it => `${it.qtd}x ${it.descricao}`).join(' | ');
+    }
+    if (!document.getElementById('nota_observacao').value && p.observacao) {
+      document.getElementById('nota_observacao').value = p.observacao;
+    }
+  }
+
+  function configurarVinculoPedidoPorId(pedidoId) {
+    if (!pedidoId) {
+      desvincularPedidoDaNota();
+      return;
+    }
+
+    const pedidos = carregarHistoricoLista();
+    const p = pedidos.find(item => item.id === pedidoId);
+    if (p) {
+      selecionarPedidoParaVinculoObj(p);
+    } else {
+      desvincularPedidoDaNota();
+    }
+  }
+
+  function desvincularPedidoDaNota() {
+    document.getElementById('nota_vinculo_pedido').value = "";
+    document.getElementById('input_busca_pedido_vinculo').value = "";
+    const legenda = document.getElementById('legenda_vinculo_pedido');
+    legenda.innerHTML = `💡 Digite para pesquisar. Se não escolher nenhum, a nota será lançada como <strong>Avulsa</strong>.`;
+    legenda.style.color = '#64748b';
+    document.getElementById('dropdown_sugestoes_pedidos').classList.add('hidden');
+  }
+
+  // DISPARO DE E-MAIL SILENCIOSO VIA API HTTP
+  async function enviarEmailSilenciosoEmailJS(nota) {
+    const nomeCli = nota.cliente || "Cliente Balcão";
+    const numTel = nota.telefone || "Sem telefone";
+    const numNota = nota.numero || "Sem número";
+    const docCli = nota.documento || "Não informado";
+
+    const assuntoFormatado = `NOTA/BOLETO - ${nomeCli} - ${numNota} - ${numTel}`;
+
+    let corpoDescricao = `${nomeCli} - ${numNota} - ${numTel}\n`;
+    corpoDescricao += `==========================================\n`;
+    corpoDescricao += `NÚMERO DA NOTA: ${numNota}\n`;
+    corpoDescricao += `CPF / CNPJ: ${docCli}\n`;
+    corpoDescricao += `VALOR TOTAL: ${formatarMoeda(nota.valor)}\n`;
+    corpoDescricao += `------------------------------------------\n`;
+    corpoDescricao += `DESCRIÇÃO DO SERVIÇO / ITENS:\n${nota.descricao || 'Nenhuma descrição informada.'}\n\n`;
+    corpoDescricao += `OBSERVAÇÕES:\n${nota.observacao || 'Nenhuma observação informada.'}\n`;
+    corpoDescricao += `==========================================\n`;
+    corpoDescricao += `Data/Hora: ${nota.data}`;
+
+    const dataPayload = {
+      service_id: EMAILJS_SERVICE_ID,
+      template_id: EMAILJS_TEMPLATE_ID,
+      user_id: EMAILJS_PUBLIC_KEY,
+      template_params: {
+        to_email: EMAIL_DESTINO,
+        subject: assuntoFormatado,
+        message: corpoDescricao,
+        cliente_nome: nomeCli,
+        nota_numero: numNota,
+        telefone: numTel,
+        documento: docCli,
+        valor: formatarMoeda(nota.valor)
+      }
+    };
+
+    try {
+      const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataPayload)
+      });
+
+      if (response.ok) {
+        return { ok: true };
+      } else {
+        const errTxt = await response.text();
+        console.error("Erro no retorno da API do EmailJS:", errTxt);
+        return { ok: false, motivo: errTxt };
+      }
+    } catch(err) {
+      console.error("Erro de conexão ao enviar e-mail:", err);
+      return { ok: false, motivo: err.message };
+    }
+  }
+
+  function abrirModalNovaNota(pedidoIdPreSelecionado = null) {
+    if (!ehAdmin) {
+      alert("⚠️ Você não tem permissão para acessar a opção de notas.");
+      return;
+    }
+
+    document.getElementById('nota_edit_id').value = "";
+    const proximaNotaNum = "NT-" + (carregarNotasLista().length + 1).toString().padStart(3, '0');
+    document.getElementById('nota_numero').value = proximaNotaNum;
+    document.getElementById('nota_documento').value = "";
+    
+    document.getElementById('nota_cliente').value = document.getElementById('cli_nome').value.trim();
+    document.getElementById('nota_telefone').value = document.getElementById('cli_tel').value.trim();
+    document.getElementById('nota_valor').value = "";
+    document.getElementById('nota_descricao').value = "";
+    document.getElementById('nota_observacao').value = document.getElementById('orc_observacao').value.trim();
+    document.getElementById('nota_status').value = "pendente";
+    document.getElementById('chk_enviar_email_nota').checked = true;
+    document.getElementById('titulo_modal_nota').innerText = "📝 Lançar Nova Nota / Boleto";
+
+    if (pedidoIdPreSelecionado || orcamentoAtualId) {
+      configurarVinculoPedidoPorId(pedidoIdPreSelecionado || orcamentoAtualId);
+    } else {
+      desvincularPedidoDaNota();
+    }
+
+    document.getElementById('modalNota').classList.remove('hidden');
+  }
+
+  function fecharModalNota() {
+    document.getElementById('modalNota').classList.add('hidden');
+  }
+
+  async function salvarNota() {
+    if (!ehAdmin) return;
+
+    const btnSalvar = document.getElementById('btn_salvar_nota_submit');
+    const idExistente = document.getElementById('nota_edit_id').value;
+    const numero = document.getElementById('nota_numero').value.trim() || ("NT-" + Date.now().toString().slice(-4));
+    const documento = document.getElementById('nota_documento').value.trim() || "";
+    const cliente = document.getElementById('nota_cliente').value.trim() || "Cliente Balcão";
+    const telefone = document.getElementById('nota_telefone').value.trim() || "";
+    const valor = parseFloat(document.getElementById('nota_valor').value) || 0;
+    const descricao = document.getElementById('nota_descricao').value.trim() || "Serviço gráfico em geral";
+    const observacao = document.getElementById('nota_observacao').value.trim();
+    const status = document.getElementById('nota_status').value;
+    const pedidoVinculadoId = document.getElementById('nota_vinculo_pedido').value || null;
+    const deveEnviarEmail = document.getElementById('chk_enviar_email_nota').checked;
+    const dataHora = new Date().toLocaleString('pt-BR');
+    const dataRaw = Date.now();
+
+    btnSalvar.innerText = "⏳ Gravando e enviando e-mail...";
+    btnSalvar.disabled = true;
+
+    let notas = carregarNotasLista();
+    let notaSalva;
+
+    if (idExistente) {
+      const idx = notas.findIndex(n => n.id === idExistente);
+      if (idx !== -1) {
+        notas[idx] = {
+          ...notas[idx],
+          numero,
+          documento,
+          cliente,
+          telefone,
+          valor,
+          descricao,
+          observacao,
+          status,
+          pedidoVinculadoId
+        };
+        notaSalva = notas[idx];
+      }
+    } else {
+      notaSalva = {
+        id: 'nota_' + Date.now(),
+        numero,
+        documento,
+        cliente,
+        telefone,
+        valor,
+        descricao,
+        observacao,
+        status,
+        pedidoVinculadoId,
+        data: dataHora,
+        dataRaw
+      };
+      notas.unshift(notaSalva);
+    }
+
+    localStorage.setItem('impact_haus_notas', JSON.stringify(notas));
+
+    if (db && notaSalva) {
+      db.collection('notas').doc(notaSalva.id).set(notaSalva);
+    }
+
+    let statusEmailMsg = "";
+    if (deveEnviarEmail) {
+      const resEmail = await enviarEmailSilenciosoEmailJS(notaSalva);
+      if (resEmail.ok) {
+        statusEmailMsg = "\n📧 E-mail enviado silenciosamente com sucesso para graficaimpacthaus@gmail.com!";
+      } else {
+        statusEmailMsg = `\n⚠️ Nota salva, mas houve falha no envio do e-mail: ${resEmail.motivo}`;
+      }
+    }
+
+    btnSalvar.innerText = "💾 Salvar Nota / Boleto";
+    btnSalvar.disabled = false;
+
+    fecharModalNota();
+    renderizarPainelNotasPendentes();
+    atualizarContadoresAbas();
+    verificarNotaVinculadaDoOrcamentoAtual();
+
+    if (!document.getElementById('modalHistorico').classList.contains('hidden')) {
+      filtrarHistorico();
+    }
+    alert(`✅ Nota / Boleto registrado com sucesso!${statusEmailMsg}`);
+  }
+
+  function alternarStatusNota(id, novoStatus) {
+    if (!ehAdmin) return;
+
+    let notas = carregarNotasLista();
+    const idx = notas.findIndex(n => n.id === id);
+    if (idx === -1) return;
+
+    notas[idx].status = novoStatus;
+    localStorage.setItem('impact_haus_notas', JSON.stringify(notas));
+
+    if (db) {
+      db.collection('notas').doc(id).update({ status: novoStatus });
+    }
+
+    renderizarPainelNotasPendentes();
+    atualizarContadoresAbas();
+    verificarNotaVinculadaDoOrcamentoAtual();
+    filtrarHistorico();
+  }
+
+  function renderizarPainelNotasPendentes() {
+    if (!ehAdmin) {
+      const painel = document.getElementById('painel_notas_pendentes');
+      if (painel) painel.classList.add('hidden');
+      return;
+    }
+
+    const notas = carregarNotasLista();
+    const pedidos = carregarHistoricoLista();
+    const pendentes = notas.filter(n => n.status === 'pendente');
+    const container = document.getElementById('lista_notas_pendentes');
+    const painel = document.getElementById('painel_notas_pendentes');
+    const badgeCount = document.getElementById('count-notas-pendentes');
+
+    badgeCount.innerText = pendentes.length;
+
+    if (pendentes.length === 0) {
+      painel.classList.add('hidden');
+      return;
+    }
+
+    painel.classList.remove('hidden');
+    container.innerHTML = '';
+
+    pendentes.forEach(n => {
+      const div = document.createElement('div');
+      div.className = 'nota-card-item';
+      
+      const docHtml = n.documento ? `<span style="color:#64748b; font-size:0.82rem; margin-left:6px;">(${n.documento})</span>` : '';
+      const obsHtml = n.observacao ? `<div class="nota-obs-tag">📌 <strong>Obs:</strong> ${n.observacao}</div>` : '';
+
+      let tagVinculo = "";
+      if (n.pedidoVinculadoId) {
+        const ped = pedidos.find(p => p.id === n.pedidoVinculadoId);
+        const numPed = ped ? ped.numero : 'Vínculo';
+        tagVinculo = `<span class="badge-vinculo" onclick="carregarOrcamentoDoHistorico('${n.pedidoVinculadoId}')" title="Clique para abrir o Pedido #${numPed}">🔗 Pedido #${numPed}</span>`;
+      }
+
+      div.innerHTML = `
+        <div style="flex: 1; min-width: 220px;">
+          <span class="badge-nota" onclick="abrirAbaNotasEFiltrar('${n.numero}')">${n.numero}</span> ${tagVinculo} 
+          <strong>${n.cliente}</strong>${docHtml} (${n.telefone || 'Sem tel'}) 
+          — Total: <strong>${formatarMoeda(n.valor)}</strong>
+          <div style="font-size: 0.88rem; margin-top: 3px; color: #334155;">${n.descricao}</div>
+          ${obsHtml}
+        </div>
+        <div style="white-space: nowrap;">
+          <button type="button" class="action-btn done" onclick="alternarStatusNota('${n.id}', 'concluido')" title="Finalizar serviço">✓ Feito</button>
+          <button type="button" class="action-btn email" onclick="dispararEmailNotaPorId('${n.id}')" title="Reenviar E-mail">📧</button>
+          <button type="button" class="action-btn edit" onclick="editarNotaModal('${n.id}')">✏️</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  async function dispararEmailNotaPorId(id) {
+    if (!ehAdmin) return;
+
+    const notas = carregarNotasLista();
+    const n = notas.find(item => item.id === id);
+    if (!n) return;
+
+    const res = await enviarEmailSilenciosoEmailJS(n);
+    if (res.ok) {
+      alert("📧 E-mail enviado com sucesso em segundo plano!");
+    } else {
+      alert(`⚠️ Erro ao enviar: ${res.motivo}`);
+    }
+  }
+
+  function editarNotaModal(id) {
+    if (!ehAdmin) return;
+
+    const notas = carregarNotasLista();
+    const n = notas.find(item => item.id === id);
+    if (!n) return;
+
+    configurarVinculoPedidoPorId(n.pedidoVinculadoId || "");
+
+    document.getElementById('nota_edit_id').value = n.id;
+    document.getElementById('nota_numero').value = n.numero;
+    document.getElementById('nota_documento').value = n.documento || '';
+    document.getElementById('nota_cliente').value = n.cliente;
+    document.getElementById('nota_telefone').value = n.telefone || '';
+    document.getElementById('nota_valor').value = n.valor || '';
+    document.getElementById('nota_descricao').value = n.descricao || '';
+    document.getElementById('nota_observacao').value = n.observacao || '';
+    document.getElementById('nota_status').value = n.status || 'pendente';
+    document.getElementById('chk_enviar_email_nota').checked = false;
+    document.getElementById('titulo_modal_nota').innerText = `✏️ Editar Nota ${n.numero}`;
+
+    document.getElementById('modalNota').classList.remove('hidden');
+  }
+
+  function excluirNota(id) {
+    if (!ehAdmin) return;
+
+    if (confirm("Deseja realmente excluir esta nota?")) {
+      let notas = carregarNotasLista().filter(n => n.id !== id);
+      localStorage.setItem('impact_haus_notas', JSON.stringify(notas));
+      if (db) {
+        db.collection('notas').doc(id).delete();
+      }
+      renderizarPainelNotasPendentes();
+      atualizarContadoresAbas();
+      verificarNotaVinculadaDoOrcamentoAtual();
+      filtrarHistorico();
+    }
+  }
+
+  function verificarNotaVinculadaDoOrcamentoAtual() {
+    const banner = document.getElementById('banner_nota_vinculada');
+    if (!orcamentoAtualId || !ehAdmin) {
+      banner.classList.add('hidden');
+      notaVinculadaAoOrcamentoAtual = null;
+      return;
+    }
+
+    const notas = carregarNotasLista();
+    const nota = notas.find(n => n.pedidoVinculadoId === orcamentoAtualId);
+
+    if (nota) {
+      notaVinculadaAoOrcamentoAtual = nota;
+      document.getElementById('lbl_nota_vinculada').innerText = nota.numero;
+      const statusSpan = document.getElementById('lbl_status_nota_vinculada');
+      if (nota.status === 'concluido') {
+        statusSpan.innerHTML = `<span class="badge-status-pago">Concluído</span>`;
+      } else {
+        statusSpan.innerHTML = `<span class="badge-status-pendente">Pendente</span>`;
+      }
+      banner.classList.remove('hidden');
+    } else {
+      notaVinculadaAoOrcamentoAtual = null;
+      banner.classList.add('hidden');
+    }
+  }
+
+  function irParaNotaVinculadaAtual() {
+    if (!notaVinculadaAoOrcamentoAtual || !ehAdmin) return;
+    abrirAbaNotasEFiltrar(notaVinculadaAoOrcamentoAtual.numero);
+  }
+
+  function abrirAbaNotasEFiltrar(termo = '') {
+    if (!ehAdmin) return;
+    abrirHistorico('notas');
+    document.getElementById('filtro_historico').value = termo;
+    filtrarHistorico();
+  }
+
+  function abrirHistorico(aba = 'pedidos') {
+    if (!ehAdmin && aba === 'notas') aba = 'pedidos';
+    alternarAbaHistorico(aba);
+    document.getElementById('modalHistorico').classList.remove('hidden');
+  }
+
+  function fecharHistorico() {
+    document.getElementById('modalHistorico').classList.add('hidden');
+    verificarAlertasBoletos();
+    renderizarPainelNotasPendentes();
+    verificarNotaVinculadaDoOrcamentoAtual();
+  }
+
+  function alternarAbaHistorico(aba) {
+    if (!ehAdmin && aba === 'notas') aba = 'pedidos';
+
+    abaAtualHistorico = aba;
+    const btnPed = document.getElementById('tab_btn_pedidos');
+    const btnNot = document.getElementById('tab_btn_notas');
+    const secPed = document.getElementById('aba_conteudo_pedidos');
+    const secNot = document.getElementById('aba_conteudo_notas');
+
+    if (aba === 'pedidos') {
+      btnPed.classList.add('active');
+      if (btnNot) btnNot.classList.remove('active');
+      secPed.classList.remove('hidden');
+      secNot.classList.add('hidden');
+    } else {
+      btnPed.classList.remove('active');
+      if (btnNot) btnNot.classList.add('active');
+      secPed.classList.add('hidden');
+      secNot.classList.remove('hidden');
+    }
+
+    filtrarHistorico();
+  }
+
+  function atualizarContadoresAbas() {
+    const pedidos = carregarHistoricoLista();
+    const notas = carregarNotasLista();
+    document.getElementById('count-historico').innerText = pedidos.length;
+    document.getElementById('tab_count_pedidos').innerText = pedidos.length;
+    const elCountNotas = document.getElementById('tab_count_notas');
+    if (elCountNotas) elCountNotas.innerText = notas.length;
+  }
+
+  function filtrarHistorico() {
+    const termo = document.getElementById('filtro_historico').value.trim().toLowerCase();
+
+    if (abaAtualHistorico === 'pedidos') {
+      const historico = carregarHistoricoLista();
+      if (!termo) {
+        renderizarTabelaHistorico(historico);
+        return;
+      }
+      const filtrados = historico.filter(orc => {
+        const numMatch = orc.numero.includes(termo) || String(orc.numRaw).includes(termo);
+        const nomeMatch = (orc.nome || "").toLowerCase().includes(termo);
+        const telMatch = (orc.tel || "").toLowerCase().includes(termo);
+        const obsMatch = (orc.observacao || "").toLowerCase().includes(termo);
+        return numMatch || nomeMatch || telMatch || obsMatch;
+      });
+      renderizarTabelaHistorico(filtrados);
+    } else {
+      if (!ehAdmin) return;
+
+      const notas = carregarNotasLista();
+      if (!termo) {
+        renderizarTabelaNotas(notas);
+        return;
+      }
+      const filtradas = notas.filter(n => {
+        const numMatch = (n.numero || "").toLowerCase().includes(termo);
+        const docMatch = (n.documento || "").toLowerCase().includes(termo);
+        const cliMatch = (n.cliente || "").toLowerCase().includes(termo);
+        const descMatch = (n.descricao || "").toLowerCase().includes(termo);
+        const obsMatch = (n.observacao || "").toLowerCase().includes(termo);
+        return numMatch || docMatch || cliMatch || descMatch || obsMatch;
+      });
+      renderizarTabelaNotas(filtradas);
+    }
+  }
+
+  function renderizarTabelaHistorico(lista) {
+    const tbody = document.getElementById('tbody-historico');
+    tbody.innerHTML = '';
+
+    const colNotaHeader = document.querySelector('.col-nota-header');
+    if (colNotaHeader) {
+      if (!ehAdmin) colNotaHeader.classList.add('hidden');
+      else colNotaHeader.classList.remove('hidden');
+    }
+
+    if (lista.length === 0) {
+      const colSpanNum = ehAdmin ? 8 : 7;
+      tbody.innerHTML = `<tr><td colspan="${colSpanNum}" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhum pedido/orçamento encontrado.</td></tr>`;
+      return;
+    }
+
+    const todasNotas = carregarNotasLista();
+
+    lista.forEach(orc => {
+      let infoPagamento = "Adiantado";
+      if (orc.formaPagamento === 'na_hora') infoPagamento = "Na Hora";
+      if (orc.formaPagamento === 'boleto') {
+        const statusBadge = orc.boletoStatus === 'pago' 
+          ? `<span class="badge-status-pago">Pago</span>` 
+          : `<span class="badge-status-pendente">Pendente</span>`;
+        const vencStr = orc.boletoVencimento ? orc.boletoVencimento.split('-').reverse().join('/') : '';
+        infoPagamento = `Boleto (${vencStr}) ${statusBadge}`;
+      }
+
+      let vinculoNotaTd = '';
+      if (ehAdmin) {
+        const notaVinculada = todasNotas.find(n => n.pedidoVinculadoId === orc.id);
+        if (notaVinculada) {
+          vinculoNotaTd = `
+            <td>
+              <button type="button" class="action-btn link-btn" onclick="abrirAbaNotasEFiltrar('${notaVinculada.numero}')" title="Ver Nota ${notaVinculada.numero}">
+                🔗 ${notaVinculada.numero}
+              </button>
+            </td>
+          `;
+        } else {
+          vinculoNotaTd = `
+            <td>
+              <button type="button" class="action-btn" style="color:#0f766e;" onclick="abrirModalNovaNota('${orc.id}')" title="Criar nota para este pedido">+ Vincular Nota</button>
+            </td>
+          `;
+        }
+      }
+
+      const obsTooltip = orc.observacao ? `title="Obs: ${orc.observacao}"` : '';
+      const btnAnexo = orc.linkAnexoDrive ? `<a href="${orc.linkAnexoDrive}" target="_blank" class="action-btn anexo-btn" title="Abrir Anexo no Google Drive">📎 Anexo</a>` : '';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong class="badge-num" onclick="carregarOrcamentoDoHistorico('${orc.id}')">#${orc.numero}</strong></td>
+        <td>${orc.data.split(' ')[0]}</td>
+        <td><strong ${obsTooltip}>${orc.nome}</strong></td>
+        <td>${orc.tel || '-'}</td>
+        <td>${infoPagamento}</td>
+        <td><strong>${formatarMoeda(orc.total)}</strong></td>
+        ${vinculoNotaTd}
+        <td class="actions">
+          ${btnAnexo}
+          ${(orc.formaPagamento === 'boleto' && orc.boletoStatus === 'pendente' && ehAdmin)
+            ? `<button type="button" class="action-btn pay" onclick="darBaixaBoleto('${orc.id}')" title="Marcar boleto como pago">✓ Pago</button>` 
+            : ''}
+          <button type="button" class="action-btn edit" onclick="carregarOrcamentoDoHistorico('${orc.id}')" title="Carregar no editor">👁️ Abrir</button>
+          <button type="button" class="action-btn clone" onclick="copiarTextoHistorico('${orc.id}')" title="Copiar texto do WhatsApp">📋 Copiar</button>
+          <button type="button" class="action-btn del" onclick="excluirOrcamentoDoHistorico('${orc.id}')" title="Excluir">🗑️</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderizarTabelaNotas(lista) {
+    if (!ehAdmin) return;
+
+    const tbody = document.getElementById('tbody-historico-notas');
+    tbody.innerHTML = '';
+
+    if (lista.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 18px;">Nenhuma nota encontrada.</td></tr>`;
+      return;
+    }
+
+    const todosPedidos = carregarHistoricoLista();
+
+    lista.forEach(n => {
+      const statusBadge = n.status === 'concluido'
+        ? `<span class="badge-status-pago">Concluído</span>`
+        : `<span class="badge-status-pendente">Pendente</span>`;
+
+      const obsInfo = n.observacao ? `<br><small style="color: #64748b;">Obs: ${n.observacao}</small>` : '';
+
+      let pedidoInfo = `<span style="color:#94a3b8; font-size:0.8rem;">Avulsa</span>`;
+      if (n.pedidoVinculadoId) {
+        const ped = todosPedidos.find(p => p.id === n.pedidoVinculadoId);
+        if (ped) {
+          pedidoInfo = `<button type="button" class="action-btn link-btn" onclick="carregarOrcamentoDoHistorico('${ped.id}')" title="Abrir pedido #${ped.numero}">🔗 Pedido #${ped.numero}</button>`;
+        } else {
+          pedidoInfo = `<span style="color:#dc2626; font-size:0.8rem;">Pedido Removido</span>`;
+        }
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><span class="badge-nota" onclick="editarNotaModal('${n.id}')">${n.numero}</span></td>
+        <td><small>${n.documento || '-'}</small></td>
+        <td>${(n.data || '').split(' ')[0]}</td>
+        <td><strong>${n.cliente}</strong><br><small>${n.telefone || '-'}</small></td>
+        <td>${pedidoInfo}</td>
+        <td>${n.descricao}${obsInfo}</td>
+        <td><strong>${formatarMoeda(n.valor)}</strong></td>
+        <td>${statusBadge}</td>
+        <td class="actions">
+          ${n.status === 'pendente' 
+            ? `<button type="button" class="action-btn done" onclick="alternarStatusNota('${n.id}', 'concluido')" title="Marcar como Feito">✓ Feito</button>` 
+            : `<button type="button" class="action-btn" onclick="alternarStatusNota('${n.id}', 'pendente')" title="Voltar a Pendente">↩ Pendente</button>`}
+          <button type="button" class="action-btn email" onclick="dispararEmailNotaPorId('${n.id}')" title="Reenviar E-mail">📧</button>
+          <button type="button" class="action-btn edit" onclick="editarNotaModal('${n.id}')">✏️</button>
+          <button type="button" class="action-btn del" onclick="excluirNota('${n.id}')" title="Excluir">🗑️</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function carregarOrcamentoDoHistorico(id) {
+    const historico = carregarHistoricoLista();
+    const orc = historico.find(o => o.id === id);
+    if (!orc) return;
+
+    orcamentoAtualId = orc.id;
+    numeroOrcamentoAtual = orc.numero;
+    document.getElementById('cli_nome').value = orc.nome === "Cliente sem nome" ? "" : orc.nome;
+    document.getElementById('cli_tel').value = orc.tel || "";
+    document.getElementById('orc_observacao').value = orc.observacao || "";
+
+    if (orc.linkAnexoDrive) {
+      document.getElementById('link_anexo_drive_salvo').value = orc.linkAnexoDrive;
+      document.getElementById('status_upload_anexo').innerHTML = `📎 Anexo anexado: <a href="${orc.linkAnexoDrive}" target="_blank">Ver Arquivo no Drive</a>`;
+    } else {
+      document.getElementById('link_anexo_drive_salvo').value = "";
+      document.getElementById('status_upload_anexo').innerHTML = "";
+    }
+
+    perfilAtual = orc.perfil || 'novo_cliente';
+    const perfilBtns = document.querySelectorAll('#group-cliente .btn-toggle');
+    perfilBtns.forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes(`'${perfilAtual}'`)));
+
+    formaPagamentoAtual = orc.formaPagamento || 'adiantado';
+    const pagBtns = document.querySelectorAll('#group-pagamento .btn-toggle');
+    pagBtns.forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes(`'${formaPagamentoAtual}'`)));
+
+    const boxBoleto = document.getElementById('box-campos-boleto');
+    if (formaPagamentoAtual === 'boleto') {
+      boxBoleto.classList.remove('hidden');
+      document.getElementById('boleto_vencimento').value = orc.boletoVencimento || '';
+      document.getElementById('boleto_status').value = orc.boletoStatus || 'pendente';
+    } else {
+      boxBoleto.classList.add('hidden');
+    }
+
+    descontoAtual = (ehAdmin && orc.desconto) ? orc.desconto : 0;
+    const descBtns = document.querySelectorAll('#group-desconto .btn-toggle');
+    descBtns.forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes(`(${descontoAtual},`)));
+
+    itensNoOrcamento = JSON.parse(JSON.stringify(orc.itens || []));
+
+    atualizarTagNumero();
+    recalcularTodosOsItens();
+    renderizarTabela();
+    atualizarResumo();
+    verificarNotaVinculadaDoOrcamentoAtual();
+    autoSalvarRascunho();
+    fecharHistorico();
+  }
+
+  function copiarTextoHistorico(id) {
+    const historico = carregarHistoricoLista();
+    const orc = historico.find(o => o.id === id);
+    if (!orc) return;
+
+    let textoItens = "";
+    (orc.itens || []).forEach((it, idx) => {
+      textoItens += 
+`*Item ${idx + 1}:* ${it.descricao}
+  • Quantidade: ${it.qtd} un
+  • Unitário: ${formatarMoeda(it.precoUnitario)}
+  • Subtotal: ${formatarMoeda(it.subtotal)}\n\n`;
+    });
+
+    let textoPag = "💳 *Pagamento:* Adiantado";
+    if (orc.formaPagamento === 'na_hora') textoPag = "💳 *Pagamento:* Na entrega/retirada";
+    if (orc.formaPagamento === 'boleto') {
+      const vStr = orc.boletoVencimento ? orc.boletoVencimento.split('-').reverse().join('/') : 'A combinar';
+      textoPag = `💳 *Pagamento:* Boleto Bancário (Vencimento: ${vStr}) [${orc.boletoStatus === 'pago' ? 'Pago' : 'Pendente'}]`;
+    }
+
+    let obsTxt = orc.observacao ? `\n📌 *Obs:* ${orc.observacao}\n` : "";
+    let anexoTxt = orc.linkAnexoDrive ? `\n📎 *Arte/Anexo:* ${orc.linkAnexoDrive}\n` : "";
+
+    const textoFinal = 
+`📄 *ORÇAMENTO DE IMPRESSÃO #${orc.numero}*
+----------------------------------------
+👤 *Cliente:* ${orc.nome}
+📞 *Telefone:* ${orc.tel || 'Não informado'}
+📅 *Data:* ${orc.data}
+----------------------------------------
+${textoItens.trim()}
+----------------------------------------
+💰 *VALOR TOTAL:* ${formatarMoeda(orc.total)}
+${textoPag}${obsTxt}${anexoTxt}
+----------------------------------------
+*Gráfica Impact Haus*`;
+
+    navigator.clipboard.writeText(textoFinal).then(() => {
+      alert(`✅ Orçamento #${orc.numero} copiado!`);
+    });
+  }
+
+  function excluirOrcamentoDoHistorico(id) {
+    if (confirm("Tem certeza que deseja excluir este orçamento do histórico?")) {
+      let historico = carregarHistoricoLista();
+      historico = historico.filter(o => o.id !== id);
+      localStorage.setItem('impact_haus_historico', JSON.stringify(historico));
+      
+      if (db) {
+        db.collection('orcamentos').doc(id).delete();
+      }
+
+      renderizarTabelaHistorico(historico);
+      atualizarContadorHistorico();
+      verificarAlertasBoletos();
+      verificarNotaVinculadaDoOrcamentoAtual();
+    }
+  }
+
+  function atualizarContadorHistorico() {
+    atualizarContadoresAbas();
+  }
+
+  function abrirModalPrecos() {
+    if (!ehAdmin) {
+      alert("⚠️ Você não tem permissão de administrador para alterar a tabela de preços.");
+      return;
+    }
+
+    const tbody = document.getElementById('tbody-precos');
+    tbody.innerHTML = '';
+
+    ITENS_CADASTRO.forEach(item => {
+      const valNovo = TABELA_PRECOS[item.key]?.novo_cliente ?? 0;
+      const valCli = TABELA_PRECOS[item.key]?.cliente ?? 0;
+      const valBal = TABELA_PRECOS[item.key]?.balcao ?? 0;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${item.desc}</strong></td>
+        <td>R$ <input type="number" step="0.01" id="cfg_${item.key}_novo_cliente" value="${valNovo}"></td>
+        <td>R$ <input type="number" step="0.01" id="cfg_${item.key}_cliente" value="${valCli}"></td>
+        <td>R$ <input type="number" step="0.01" id="cfg_${item.key}_balcao" value="${valBal}"></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('modalPrecos').classList.remove('hidden');
+  }
+
+  function fecharModalPrecos() {
+    document.getElementById('modalPrecos').classList.add('hidden');
+  }
+
+  function salvarConfigPrecos() {
+    if (!ehAdmin) return;
+
+    ITENS_CADASTRO.forEach(item => {
+      const novo = parseFloat(document.getElementById(`cfg_${item.key}_novo_cliente`).value) || 0;
+      const cli = parseFloat(document.getElementById(`cfg_${item.key}_cliente`).value) || 0;
+      const bal = parseFloat(document.getElementById(`cfg_${item.key}_balcao`).value) || 0;
+
+      TABELA_PRECOS[item.key] = {
+        novo_cliente: novo,
+        cliente: cli,
+        balcao: bal
+      };
+    });
+
+    localStorage.setItem('impact_haus_precos', JSON.stringify(TABELA_PRECOS));
+
+    if (db) {
+      db.collection('configuracoes').doc('tabela_precos').set(TABELA_PRECOS);
+    }
+
+    fecharModalPrecos();
+    recalcularTodosOsItens();
+    renderizarTabela();
+    atualizarResumo();
+    alert("✅ Tabela de preços atualizada com sucesso!");
+  }
+
+  function restaurarPadroes() {
+    if (!ehAdmin) return;
+
+    if (confirm("Deseja restaurar todos os valores para os padrões iniciais?")) {
+      TABELA_PRECOS = JSON.parse(JSON.stringify(PRECOS_PADRAO));
+      localStorage.removeItem('impact_haus_precos');
+      if (db) {
+        db.collection('configuracoes').doc('tabela_precos').set(TABELA_PRECOS);
+      }
+      fecharModalPrecos();
+      recalcularTodosOsItens();
+      renderizarTabela();
+      atualizarResumo();
+      alert("Valores restaurados para o padrão!");
+    }
+  }
+
+  window.onclick = function(event) {
+    const dropdownSugestoes = document.getElementById('dropdown_sugestoes_pedidos');
+    const inputBusca = document.getElementById('input_busca_pedido_vinculo');
+
+    if (dropdownSugestoes && event.target !== inputBusca && !dropdownSugestoes.contains(event.target)) {
+      dropdownSugestoes.classList.add('hidden');
+    }
+  };
+
+  window.onload = function() {
+    inicializarEmailJS();
+    atualizarTagNumero();
+    atualizarContadorHistorico();
+    verificarAlertasBoletos();
+    renderizarPainelNotasPendentes();
+    atualizarResumo();
+  };
+</script>
+
+</body>
+</html>
