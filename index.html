@@ -348,11 +348,14 @@
     <button type="button" class="action-btn link-btn" onclick="irParaNotaVinculadaAtual()">🔍 Abrir Aba da Nota</button>
   </div>
 
-  <div style="background: var(--card-inner); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+  <div style="background: var(--card-inner); padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
     <div>
       <span>Orçamento / Pedido Atual: <strong id="tag_orcamento_num" class="badge-num">#001</strong></span>
     </div>
-    <button type="button" onclick="iniciarNovoOrcamento(true)" style="background: #ffffff; border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ Novo Orçamento Limpo</button>
+    <div style="display: flex; gap: 6px;">
+      <button type="button" onclick="iniciarNovoOrcamento(true)" style="background: #ffffff; border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ Novo Orçamento Limpo</button>
+      <button type="button" onclick="limparCamposOrcamentoForm()" style="background: #fff1f2; border: 1px solid #fecdd3; color: #e11d48; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600;" title="Limpar dados preenchidos">🧹 Limpar Tudo</button>
+    </div>
   </div>
 
   <label>Tipo de Cliente</label>
@@ -365,11 +368,11 @@
   <div class="grid-2">
     <div>
       <label>Nome do Cliente</label>
-      <input type="text" id="cli_nome" placeholder="Ex: João da Silva" oninput="atualizarResumo()">
+      <input type="text" id="cli_nome" placeholder="Ex: João da Silva" oninput="atualizarResumo(); autoSalvarRascunho();">
     </div>
     <div>
       <label>Telefone / WhatsApp</label>
-      <input type="text" id="cli_tel" placeholder="(00) 00000-0000" oninput="verificarTelefoneCliente(); atualizarResumo();">
+      <input type="text" id="cli_tel" placeholder="(00) 00000-0000" oninput="verificarTelefoneCliente(); atualizarResumo(); autoSalvarRascunho();">
       <div id="alerta_cliente_existente" class="alerta-cliente-existente hidden">
         <span>⭐ Cliente cadastrado: <strong id="nome_cliente_encontrado"></strong></span>
         <button type="button" onclick="aplicarPerfilFrequenteAutomatico()" style="background:#15803d; color:#ffffff; font-weight:bold; border:none; padding:3px 7px; border-radius:4px; font-size:0.75rem; cursor:pointer;">Usar Tabela Cliente</button>
@@ -388,11 +391,11 @@
     <div id="box-campos-boleto" class="grid-2 hidden" style="margin-top: 12px;">
       <div>
         <label>Data de Vencimento do Boleto:</label>
-        <input type="date" id="boleto_vencimento" onchange="atualizarResumo()">
+        <input type="date" id="boleto_vencimento" onchange="atualizarResumo(); autoSalvarRascunho();">
       </div>
       <div>
         <label>Status do Pagamento:</label>
-        <select id="boleto_status" onchange="atualizarResumo()">
+        <select id="boleto_status" onchange="atualizarResumo(); autoSalvarRascunho();">
           <option value="pendente">Pendente de Pagamento</option>
           <option value="pago">Já Pago</option>
         </select>
@@ -634,7 +637,7 @@
 
   <!-- CAMPO DE OBSERVAÇÃO DO PEDIDO -->
   <label for="orc_observacao">Observações do Pedido / Acabamento / Detalhes de Produção:</label>
-  <textarea id="orc_observacao" placeholder="Ex: Refilar sem borda branca, cliente traz arquivo em PDF/X-1a, embalar em pacotes de 100 unidades..." oninput="atualizarResumo()"></textarea>
+  <textarea id="orc_observacao" placeholder="Ex: Refilar sem borda branca, cliente traz arquivo em PDF/X-1a, embalar em pacotes de 100 unidades..." oninput="atualizarResumo(); autoSalvarRascunho();"></textarea>
 
   <!-- Desconto -->
   <div id="box-desconto-container">
@@ -1027,6 +1030,7 @@
         
         aplicarPermissoesInterface();
         sincronizarComFirebase();
+        restaurarRascunhoFormulario();
       } else {
         document.getElementById('tela-login').classList.remove('hidden');
         document.getElementById('app-container').classList.add('hidden');
@@ -1150,6 +1154,75 @@
   let orcamentoAtualId = null;
   let notaVinculadaAoOrcamentoAtual = null;
 
+  // ==========================================
+  // SISTEMA DE AUTO-SALVAMENTO DO ORÇAMENTO (RASCUNHO)
+  // ==========================================
+  function autoSalvarRascunho() {
+    const rascunho = {
+      cli_nome: document.getElementById('cli_nome').value,
+      cli_tel: document.getElementById('cli_tel').value,
+      orc_observacao: document.getElementById('orc_observacao').value,
+      perfilAtual,
+      formaPagamentoAtual,
+      boleto_vencimento: document.getElementById('boleto_vencimento').value,
+      boleto_status: document.getElementById('boleto_status').value,
+      descontoAtual,
+      itensNoOrcamento,
+      orcamentoAtualId,
+      numeroOrcamentoAtual
+    };
+    localStorage.setItem('impact_haus_rascunho_orcamento', JSON.stringify(rascunho));
+  }
+
+  function restaurarRascunhoFormulario() {
+    const salvo = localStorage.getItem('impact_haus_rascunho_orcamento');
+    if (!salvo) return;
+    try {
+      const data = JSON.parse(salvo);
+      if (!data) return;
+
+      if (data.cli_nome) document.getElementById('cli_nome').value = data.cli_nome;
+      if (data.cli_tel) document.getElementById('cli_tel').value = data.cli_tel;
+      if (data.orc_observacao) document.getElementById('orc_observacao').value = data.orc_observacao;
+
+      if (data.perfilAtual) setPerfil(data.perfilAtual);
+      if (data.formaPagamentoAtual) setFormaPagamento(data.formaPagamentoAtual);
+
+      if (data.boleto_vencimento) document.getElementById('boleto_vencimento').value = data.boleto_vencimento;
+      if (data.boleto_status) document.getElementById('boleto_status').value = data.boleto_status;
+
+      if (data.descontoAtual !== undefined) setDesconto(data.descontoAtual);
+      if (data.itensNoOrcamento && Array.isArray(data.itensNoOrcamento)) {
+        itensNoOrcamento = data.itensNoOrcamento;
+      }
+
+      if (data.orcamentoAtualId) orcamentoAtualId = data.orcamentoAtualId;
+      if (data.numeroOrcamentoAtual) {
+        numeroOrcamentoAtual = data.numeroOrcamentoAtual;
+        atualizarTagNumero();
+      }
+
+      renderizarTabela();
+      atualizarResumo();
+    } catch(e) {
+      console.warn("Erro ao restaurar rascunho:", e);
+    }
+  }
+
+  function limparRascunhoNavegador() {
+    localStorage.removeItem('impact_haus_rascunho_orcamento');
+  }
+
+  function limparCamposOrcamentoForm() {
+    if (itensNoOrcamento.length > 0 || document.getElementById('cli_nome').value || document.getElementById('cli_tel').value) {
+      if (!confirm("Deseja realmente limpar todos os campos e o carrinho deste orçamento?")) {
+        return;
+      }
+    }
+    limparRascunhoNavegador();
+    iniciarNovoOrcamento(false);
+  }
+
   function sincronizarComFirebase() {
     if (!db) return;
 
@@ -1169,8 +1242,10 @@
         localStorage.setItem('impact_haus_historico', JSON.stringify(lista));
         let maxNum = Math.max(...lista.map(o => o.numRaw || 0));
         localStorage.setItem('impact_haus_seq_num', maxNum.toString());
-        numeroOrcamentoAtual = formatarNumeroOrcamento(maxNum + 1);
-        atualizarTagNumero();
+        if (!orcamentoAtualId && !localStorage.getItem('impact_haus_rascunho_orcamento')) {
+          numeroOrcamentoAtual = formatarNumeroOrcamento(maxNum + 1);
+          atualizarTagNumero();
+        }
       }
       atualizarContadorHistorico();
       verificarAlertasBoletos();
@@ -1228,6 +1303,7 @@
     renderizarTabela();
     atualizarResumo();
     atualizarPreviewAproveitamento();
+    autoSalvarRascunho();
   }
 
   function setFormaPagamento(forma, event) {
@@ -1248,6 +1324,7 @@
       boxBoleto.classList.add('hidden');
     }
     atualizarResumo();
+    autoSalvarRascunho();
   }
 
   function setDesconto(pct, event) {
@@ -1257,6 +1334,7 @@
     btns.forEach(b => b.classList.remove('active'));
     if (event) event.currentTarget.classList.add('active');
     atualizarResumo();
+    autoSalvarRascunho();
   }
 
   function setCategoria(cat, event) {
@@ -1726,6 +1804,7 @@
     }
     
     atualizarResumo();
+    autoSalvarRascunho();
   }
 
   function salvarItemNoCarrinho() {
@@ -1746,6 +1825,7 @@
 
     renderizarTabela();
     atualizarResumo();
+    autoSalvarRascunho();
   }
 
   function renderizarTabela() {
@@ -1785,6 +1865,7 @@
     itensNoOrcamento.push(processarCalculoItem(copia, itemOriginal.precoUnitario));
     renderizarTabela();
     atualizarResumo();
+    autoSalvarRascunho();
   }
 
   function excluirItem(index) {
@@ -1795,6 +1876,7 @@
       itensNoOrcamento.splice(index, 1);
       renderizarTabela();
       atualizarResumo();
+      autoSalvarRascunho();
     }
   }
 
@@ -2207,6 +2289,7 @@ ${textoPagamento}${linhaObs}
     verificarAlertasBoletos();
 
     alert(`✅ Pedido/Orçamento #${numSalvoAviso} salvo com sucesso!`);
+    limparRascunhoNavegador();
     iniciarNovoOrcamento(false);
   }
 
@@ -2260,6 +2343,7 @@ ${textoPagamento}${linhaObs}
       numeroOrcamentoAtual = novoOrc.numero;
       atualizarTagNumero();
       atualizarContadorHistorico();
+      limparRascunhoNavegador();
     }
 
     const nome = document.getElementById('cli_nome').value.trim() || "Cliente Balcão";
@@ -2319,6 +2403,7 @@ ${textoPagamento}${linhaObs}
     cancelarEdicao();
     renderizarTabela();
     atualizarResumo();
+    limparRascunhoNavegador();
   }
 
   // AUTOCOMPLETE DIGITÁVEL PARA SELEÇÃO DE PEDIDO
@@ -3023,6 +3108,7 @@ ${textoPagamento}${linhaObs}
     renderizarTabela();
     atualizarResumo();
     verificarNotaVinculadaDoOrcamentoAtual();
+    autoSalvarRascunho();
     fecharHistorico();
   }
 
@@ -3165,16 +3251,10 @@ ${textoPag}${obsTxt}
     }
   }
 
+  // PROTEÇÃO CONTRA FECHAMENTO ACIDENTAL AO CLICAR FORA
   window.onclick = function(event) {
-    const modalPrecos = document.getElementById('modalPrecos');
-    const modalHistorico = document.getElementById('modalHistorico');
-    const modalNota = document.getElementById('modalNota');
     const dropdownSugestoes = document.getElementById('dropdown_sugestoes_pedidos');
     const inputBusca = document.getElementById('input_busca_pedido_vinculo');
-
-    if (event.target === modalPrecos) fecharModalPrecos();
-    if (event.target === modalHistorico) fecharHistorico();
-    if (event.target === modalNota) fecharModalNota();
 
     if (dropdownSugestoes && event.target !== inputBusca && !dropdownSugestoes.contains(event.target)) {
       dropdownSugestoes.classList.add('hidden');
