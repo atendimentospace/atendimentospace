@@ -421,6 +421,7 @@
       <button type="button" class="btn-toggle active" onclick="setCategoria('sulfite', event)">Sulfite</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('cartoes', event)">🪪 Cartões</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('cartoes_premium', event)">✨ Cartões Premium</button>
+      <button type="button" class="btn-toggle" onclick="setCategoria('placas', event)">🖼️ Placas</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('flyers', event)">📄 Flyers / Panfletos</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('personalizado', event)">Tamanho Personalizado</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('couche_a5', event)">Couchê A5</button>
@@ -428,6 +429,7 @@
       <button type="button" class="btn-toggle" onclick="setCategoria('couche_a3', event)">Couchê Super A3</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('adesivo_folha', event)">Adesivo Folha</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('m2', event)">Grandes Formatos (cm)</button>
+      <button type="button" class="btn-toggle" onclick="setCategoria('banners', event)">🚩 Banners</button>
     </div>
 
     <!-- Sulfite -->
@@ -478,6 +480,38 @@
         <option value="cp500_hotstamping">500 un - Hot Stamping Dourado Logo Frente (Couchê 300g Fosco 88x48mm F/V) - R$ 450,00</option>
         <option value="cp1000_verniz">1000 un - Couchê 300g + Lam. Fosca + Verniz Localizado (Frente/Verso) - R$ 245,00</option>
         <option value="cp1000_verniz_cantos">1000 un - Couchê 300g + Lam. Fosca + Verniz Localizado (F/V) + 4 Cantos Arredondados - R$ 345,00</option>
+      </select>
+    </div>
+
+    <!-- PLACAS -->
+    <div id="box-placas" class="box-options hidden">
+      <label>Tamanho da Placa:</label>
+      <select id="placas_opcao">
+        <option value="placa_10x15">Placa 10x15 cm - R$ 7,50</option>
+        <option value="placa_20x15">Placa 20x15 cm - R$ 10,00</option>
+        <option value="placa_30x20">Placa 30x20 cm - R$ 15,00</option>
+        <option value="placa_30x40">Placa 30x40 cm - R$ 25,00</option>
+        <option value="placa_60x40">Placa 60x40 cm - R$ 35,00</option>
+        <option value="placa_90x60">Placa 90x60 cm - R$ 70,00</option>
+        <option value="placa_120x90">Placa 120x90 cm - R$ 150,00</option>
+        <option value="placa_200x100">Placa 200x100 cm - R$ 280,00</option>
+      </select>
+    </div>
+
+    <!-- BANNERS -->
+    <div id="box-banners" class="box-options hidden">
+      <label>Modelo / Tamanho do Banner:</label>
+      <select id="banners_opcao">
+        <optgroup label="Banner de Lona">
+          <option value="bl_90x120">Banner de Lona 90x120 cm - R$ 55,00</option>
+          <option value="bl_70x100">Banner de Lona 70x100 cm - R$ 45,00</option>
+          <option value="bl_90x80">Banner de Lona 90x80 cm - R$ 40,00</option>
+        </optgroup>
+        <optgroup label="Banner de Papel">
+          <option value="bp_90x120">Banner de Papel 90x120 cm - R$ 45,00</option>
+          <option value="bp_70x100">Banner de Papel 70x100 cm - R$ 35,00</option>
+          <option value="bp_90x80">Banner de Papel 90x80 cm - R$ 30,00</option>
+        </optgroup>
       </select>
     </div>
 
@@ -679,7 +713,7 @@
     </div>
 
     <div>
-      <label id="lbl_qtd">Quantidade de Pacotes / Lotes:</label>
+      <label id="lbl_qtd">Quantidade de Peças / Lotes:</label>
       <input type="number" id="qtd_itens" value="1" min="1" oninput="atualizarPreviewAproveitamento()">
     </div>
 
@@ -1031,6 +1065,26 @@
     cp500_hotstamping:   { desc: "500 Cartões Premium - 88x48mm - Couchê 300g Fosco F/V - HOTSTAMPING Dourado Logo Frente [Produção: 7 dias úteis]", valor: 450.00 },
     cp1000_verniz:       { desc: "1000 Cartões Premium - Couchê 300g + Lam. Fosca + Verniz Localizado F/V [Produção: 7 dias úteis]", valor: 245.00 },
     cp1000_verniz_cantos: { desc: "1000 Cartões Premium - Couchê 300g + Lam. Fosca + Verniz Localizado F/V + 4 Cantos Arredondados [Produção: 7 dias úteis]", valor: 345.00 }
+  };
+
+  const TABELA_PLACAS = {
+    placa_10x15:  { desc: "Placa 10x15 cm", valor: 7.50 },
+    placa_20x15:  { desc: "Placa 20x15 cm", valor: 10.00 },
+    placa_30x20:  { desc: "Placa 30x20 cm", valor: 15.00 },
+    placa_30x40:  { desc: "Placa 30x40 cm", valor: 25.00 },
+    placa_60x40:  { desc: "Placa 60x40 cm", valor: 35.00 },
+    placa_90x60:  { desc: "Placa 90x60 cm", valor: 70.00 },
+    placa_120x90: { desc: "Placa 120x90 cm", valor: 150.00 },
+    placa_200x100:{ desc: "Placa 200x100 cm", valor: 280.00 }
+  };
+
+  const TABELA_BANNERS = {
+    bl_90x120: { desc: "Banner de Lona 90x120 cm", valor: 55.00 },
+    bl_70x100: { desc: "Banner de Lona 70x100 cm", valor: 45.00 },
+    bl_90x80:  { desc: "Banner de Lona 90x80 cm", valor: 40.00 },
+    bp_90x120: { desc: "Banner de Papel 90x120 cm", valor: 45.00 },
+    bp_70x100: { desc: "Banner de Papel 70x100 cm", valor: 35.00 },
+    bp_90x80:  { desc: "Banner de Papel 90x80 cm", valor: 30.00 }
   };
 
   const TABELA_FLYERS = {
@@ -1571,6 +1625,8 @@
     document.getElementById('box-sulfite').classList.add('hidden');
     document.getElementById('box-cartoes').classList.add('hidden');
     document.getElementById('box-cartoes-premium').classList.add('hidden');
+    document.getElementById('box-placas').classList.add('hidden');
+    document.getElementById('box-banners').classList.add('hidden');
     document.getElementById('box-flyers').classList.add('hidden');
     document.getElementById('box-personalizado').classList.add('hidden');
     document.getElementById('box-couche-a5').classList.add('hidden');
@@ -1602,6 +1658,18 @@
       boxApostila.classList.add('hidden');
       boxLaminacao.classList.add('hidden');
       lblQtd.innerText = "Quantidade de Pacotes / Lotes:";
+    } else if (cat === 'placas') {
+      document.getElementById('box-placas').classList.remove('hidden');
+      boxFace.classList.add('hidden');
+      boxApostila.classList.add('hidden');
+      boxLaminacao.classList.add('hidden');
+      lblQtd.innerText = "Quantidade de Peças:";
+    } else if (cat === 'banners') {
+      document.getElementById('box-banners').classList.remove('hidden');
+      boxFace.classList.add('hidden');
+      boxApostila.classList.add('hidden');
+      boxLaminacao.classList.add('hidden');
+      lblQtd.innerText = "Quantidade de Peças:";
     } else if (cat === 'flyers') {
       document.getElementById('box-flyers').classList.remove('hidden');
       boxFace.classList.add('hidden');
@@ -1830,6 +1898,8 @@
       sulfite_cor: document.getElementById('sulfite_cor').value,
       cartoes_opcao: document.getElementById('cartoes_opcao').value,
       cartoes_premium_opcao: document.getElementById('cartoes_premium_opcao').value,
+      placas_opcao: document.getElementById('placas_opcao').value,
+      banners_opcao: document.getElementById('banners_opcao').value,
       flyers_opcao: document.getElementById('flyers_opcao').value,
       couche_a5_gram: document.getElementById('couche_a5_gram').value,
       couche_a4_gram: document.getElementById('couche_a4_gram').value,
@@ -1873,6 +1943,16 @@
       const dadosCartaoPremium = TABELA_CARTOES_PREMIUM[item.cartoes_premium_opcao] || { desc: "Cartão Premium", valor: 0 };
       descMaterial = dadosCartaoPremium.desc;
       precoUnitario = dadosCartaoPremium.valor;
+
+    } else if (item.categoria === 'placas') {
+      const dadosPlaca = TABELA_PLACAS[item.placas_opcao] || { desc: "Placa", valor: 0 };
+      descMaterial = dadosPlaca.desc;
+      precoUnitario = dadosPlaca.valor;
+
+    } else if (item.categoria === 'banners') {
+      const dadosBanner = TABELA_BANNERS[item.banners_opcao] || { desc: "Banner", valor: 0 };
+      descMaterial = dadosBanner.desc;
+      precoUnitario = dadosBanner.valor;
 
     } else if (item.categoria === 'flyers') {
       const dadosFlyer = TABELA_FLYERS[item.flyers_opcao] || { desc: "Flyers / Panfletos", valor: 0 };
@@ -2170,6 +2250,10 @@
       document.getElementById('cartoes_opcao').value = it.cartoes_opcao;
     } else if (it.categoria === 'cartoes_premium') {
       document.getElementById('cartoes_premium_opcao').value = it.cartoes_premium_opcao;
+    } else if (it.categoria === 'placas') {
+      document.getElementById('placas_opcao').value = it.placas_opcao;
+    } else if (it.categoria === 'banners') {
+      document.getElementById('banners_opcao').value = it.banners_opcao;
     } else if (it.categoria === 'flyers') {
       document.getElementById('flyers_opcao').value = it.flyers_opcao;
     } else if (it.categoria === 'personalizado') {
