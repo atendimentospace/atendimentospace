@@ -419,6 +419,7 @@
     <label>Categoria do Material</label>
     <div class="btn-group" id="group-categoria">
       <button type="button" class="btn-toggle active" onclick="setCategoria('sulfite', event)">Sulfite</button>
+      <button type="button" class="btn-toggle" onclick="setCategoria('offset', event)">OffSet</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('cartoes', event)">🪪 Cartões</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('cartoes_premium', event)">✨ Cartões Premium</button>
       <button type="button" class="btn-toggle" onclick="setCategoria('placas', event)">🖼️ Placas</button>
@@ -438,6 +439,7 @@
         <div>
           <label>Formato</label>
           <select id="sulfite_formato">
+            <option value="A5">A5</option>
             <option value="A4">A4</option>
             <option value="A3">A3</option>
           </select>
@@ -445,6 +447,36 @@
         <div>
           <label>Tipo de Cor</label>
           <select id="sulfite_cor">
+            <option value="PB">Preto e Branco</option>
+            <option value="Color">Colorido</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- OffSet -->
+    <div id="box-offset" class="box-options hidden">
+      <div class="grid-3">
+        <div>
+          <label>Gramatura OffSet</label>
+          <select id="offset_gram">
+            <option value="90g">OffSet 90g</option>
+            <option value="180g">OffSet 180g</option>
+            <option value="210g">OffSet 210g</option>
+            <option value="250g">OffSet 250g</option>
+          </select>
+        </div>
+        <div>
+          <label>Tamanho</label>
+          <select id="offset_tamanho">
+            <option value="A5">A5</option>
+            <option value="A4">A4</option>
+            <option value="SA3">Super A3 (SA3)</option>
+          </select>
+        </div>
+        <div>
+          <label>Tipo de Cor</label>
+          <select id="offset_cor">
             <option value="PB">Preto e Branco</option>
             <option value="Color">Colorido</option>
           </select>
@@ -1248,6 +1280,11 @@
   }
 
   const ITENS_CADASTRO = [
+    { key: "sulfite_A5_PB_F", desc: "Sulfite A5 PB - Frente" },
+    { key: "sulfite_A5_PB_FV", desc: "Sulfite A5 PB - Frente e Verso" },
+    { key: "sulfite_A5_Color_F", desc: "Sulfite A5 Color - Frente" },
+    { key: "sulfite_A5_Color_FV", desc: "Sulfite A5 Color - Frente e Verso" },
+
     { key: "sulfite_A4_PB_F", desc: "Sulfite A4 PB - Frente" },
     { key: "sulfite_A4_PB_FV", desc: "Sulfite A4 PB - Frente e Verso" },
     { key: "sulfite_A4_Color_F", desc: "Sulfite A4 Color - Frente" },
@@ -1257,6 +1294,58 @@
     { key: "sulfite_A3_PB_FV", desc: "Sulfite A3 PB - Frente e Verso" },
     { key: "sulfite_A3_Color_F", desc: "Sulfite A3 Color - Frente" },
     { key: "sulfite_A3_Color_FV", desc: "Sulfite A3 Color - Frente e Verso" },
+
+    { key: "offset_90g_A5_PB_F", desc: "OffSet 90g A5 PB - Frente" },
+    { key: "offset_90g_A5_PB_FV", desc: "OffSet 90g A5 PB - Frente e Verso" },
+    { key: "offset_90g_A5_Color_F", desc: "OffSet 90g A5 Color - Frente" },
+    { key: "offset_90g_A5_Color_FV", desc: "OffSet 90g A5 Color - Frente e Verso" },
+    { key: "offset_90g_A4_PB_F", desc: "OffSet 90g A4 PB - Frente" },
+    { key: "offset_90g_A4_PB_FV", desc: "OffSet 90g A4 PB - Frente e Verso" },
+    { key: "offset_90g_A4_Color_F", desc: "OffSet 90g A4 Color - Frente" },
+    { key: "offset_90g_A4_Color_FV", desc: "OffSet 90g A4 Color - Frente e Verso" },
+    { key: "offset_90g_SA3_PB_F", desc: "OffSet 90g SA3 PB - Frente" },
+    { key: "offset_90g_SA3_PB_FV", desc: "OffSet 90g SA3 PB - Frente e Verso" },
+    { key: "offset_90g_SA3_Color_F", desc: "OffSet 90g SA3 Color - Frente" },
+    { key: "offset_90g_SA3_Color_FV", desc: "OffSet 90g SA3 Color - Frente e Verso" },
+
+    { key: "offset_180g_A5_PB_F", desc: "OffSet 180g A5 PB - Frente" },
+    { key: "offset_180g_A5_PB_FV", desc: "OffSet 180g A5 PB - Frente e Verso" },
+    { key: "offset_180g_A5_Color_F", desc: "OffSet 180g A5 Color - Frente" },
+    { key: "offset_180g_A5_Color_FV", desc: "OffSet 180g A5 Color - Frente e Verso" },
+    { key: "offset_180g_A4_PB_F", desc: "OffSet 180g A4 PB - Frente" },
+    { key: "offset_180g_A4_PB_FV", desc: "OffSet 180g A4 PB - Frente e Verso" },
+    { key: "offset_180g_A4_Color_F", desc: "OffSet 180g A4 Color - Frente" },
+    { key: "offset_180g_A4_Color_FV", desc: "OffSet 180g A4 Color - Frente e Verso" },
+    { key: "offset_180g_SA3_PB_F", desc: "OffSet 180g SA3 PB - Frente" },
+    { key: "offset_180g_SA3_PB_FV", desc: "OffSet 180g SA3 PB - Frente e Verso" },
+    { key: "offset_180g_SA3_Color_F", desc: "OffSet 180g SA3 Color - Frente" },
+    { key: "offset_180g_SA3_Color_FV", desc: "OffSet 180g SA3 Color - Frente e Verso" },
+
+    { key: "offset_210g_A5_PB_F", desc: "OffSet 210g A5 PB - Frente" },
+    { key: "offset_210g_A5_PB_FV", desc: "OffSet 210g A5 PB - Frente e Verso" },
+    { key: "offset_210g_A5_Color_F", desc: "OffSet 210g A5 Color - Frente" },
+    { key: "offset_210g_A5_Color_FV", desc: "OffSet 210g A5 Color - Frente e Verso" },
+    { key: "offset_210g_A4_PB_F", desc: "OffSet 210g A4 PB - Frente" },
+    { key: "offset_210g_A4_PB_FV", desc: "OffSet 210g A4 PB - Frente e Verso" },
+    { key: "offset_210g_A4_Color_F", desc: "OffSet 210g A4 Color - Frente" },
+    { key: "offset_210g_A4_Color_FV", desc: "OffSet 210g A4 Color - Frente e Verso" },
+    { key: "offset_210g_SA3_PB_F", desc: "OffSet 210g SA3 PB - Frente" },
+    { key: "offset_210g_SA3_PB_FV", desc: "OffSet 210g SA3 PB - Frente e Verso" },
+    { key: "offset_210g_SA3_Color_F", desc: "OffSet 210g SA3 Color - Frente" },
+    { key: "offset_210g_SA3_Color_FV", desc: "OffSet 210g SA3 Color - Frente e Verso" },
+
+    { key: "offset_250g_A5_PB_F", desc: "OffSet 250g A5 PB - Frente" },
+    { key: "offset_250g_A5_PB_FV", desc: "OffSet 250g A5 PB - Frente e Verso" },
+    { key: "offset_250g_A5_Color_F", desc: "OffSet 250g A5 Color - Frente" },
+    { key: "offset_250g_A5_Color_FV", desc: "OffSet 250g A5 Color - Frente e Verso" },
+    { key: "offset_250g_A4_PB_F", desc: "OffSet 250g A4 PB - Frente" },
+    { key: "offset_250g_A4_PB_FV", desc: "OffSet 250g A4 PB - Frente e Verso" },
+    { key: "offset_250g_A4_Color_F", desc: "OffSet 250g A4 Color - Frente" },
+    { key: "offset_250g_A4_Color_FV", desc: "OffSet 250g A4 Color - Frente e Verso" },
+    { key: "offset_250g_SA3_PB_F", desc: "OffSet 250g SA3 PB - Frente" },
+    { key: "offset_250g_SA3_PB_FV", desc: "OffSet 250g SA3 PB - Frente e Verso" },
+    { key: "offset_250g_SA3_Color_F", desc: "OffSet 250g SA3 Color - Frente" },
+    { key: "offset_250g_SA3_Color_FV", desc: "OffSet 250g SA3 Color - Frente e Verso" },
 
     { key: "couche_a5_115g_F", desc: "Couchê A5 115g - Frente" },
     { key: "couche_a5_115g_FV", desc: "Couchê A5 115g - Frente e Verso" },
@@ -1295,6 +1384,11 @@
   ];
 
   const PRECOS_PADRAO = {
+    sulfite_A5_PB_F:        { novo_cliente: 0.15, cliente: 0.12, balcao: 0.20 },
+    sulfite_A5_PB_FV:       { novo_cliente: 0.12, cliente: 0.10, balcao: 0.15 },
+    sulfite_A5_Color_F:     { novo_cliente: 0.55, cliente: 0.50, balcao: 0.70 },
+    sulfite_A5_Color_FV:    { novo_cliente: 0.45, cliente: 0.40, balcao: 0.60 },
+
     sulfite_A4_PB_F:        { novo_cliente: 0.25, cliente: 0.20, balcao: 0.30 },
     sulfite_A4_PB_FV:       { novo_cliente: 0.20, cliente: 0.18, balcao: 0.25 },
     sulfite_A4_Color_F:     { novo_cliente: 0.95, cliente: 0.90, balcao: 1.20 },
@@ -1304,6 +1398,58 @@
     sulfite_A3_PB_FV:       { novo_cliente: 1.80, cliente: 1.50, balcao: 2.20 },
     sulfite_A3_Color_F:     { novo_cliente: 3.50, cliente: 3.20, balcao: 4.00 },
     sulfite_A3_Color_FV:    { novo_cliente: 3.25, cliente: 3.00, balcao: 3.80 },
+
+    offset_90g_A5_PB_F:     { novo_cliente: 0.20, cliente: 0.18, balcao: 0.25 },
+    offset_90g_A5_PB_FV:    { novo_cliente: 0.18, cliente: 0.15, balcao: 0.20 },
+    offset_90g_A5_Color_F:  { novo_cliente: 0.65, cliente: 0.60, balcao: 0.80 },
+    offset_90g_A5_Color_FV: { novo_cliente: 0.55, cliente: 0.50, balcao: 0.70 },
+    offset_90g_A4_PB_F:     { novo_cliente: 0.35, cliente: 0.30, balcao: 0.40 },
+    offset_90g_A4_PB_FV:    { novo_cliente: 0.30, cliente: 0.25, balcao: 0.35 },
+    offset_90g_A4_Color_F:  { novo_cliente: 1.10, cliente: 1.00, balcao: 1.30 },
+    offset_90g_A4_Color_FV: { novo_cliente: 0.95, cliente: 0.90, balcao: 1.20 },
+    offset_90g_SA3_PB_F:    { novo_cliente: 2.50, cliente: 2.20, balcao: 3.00 },
+    offset_90g_SA3_PB_FV:   { novo_cliente: 2.20, cliente: 1.90, balcao: 2.70 },
+    offset_90g_SA3_Color_F: { novo_cliente: 4.00, cliente: 3.60, balcao: 4.50 },
+    offset_90g_SA3_Color_FV:{ novo_cliente: 3.60, cliente: 3.30, balcao: 4.20 },
+
+    offset_180g_A5_PB_F:     { novo_cliente: 0.30, cliente: 0.25, balcao: 0.35 },
+    offset_180g_A5_PB_FV:    { novo_cliente: 0.25, cliente: 0.22, balcao: 0.30 },
+    offset_180g_A5_Color_F:  { novo_cliente: 0.75, cliente: 0.70, balcao: 0.90 },
+    offset_180g_A5_Color_FV: { novo_cliente: 0.65, cliente: 0.60, balcao: 0.80 },
+    offset_180g_A4_PB_F:     { novo_cliente: 0.50, cliente: 0.45, balcao: 0.60 },
+    offset_180g_A4_PB_FV:    { novo_cliente: 0.45, cliente: 0.40, balcao: 0.55 },
+    offset_180g_A4_Color_F:  { novo_cliente: 1.30, cliente: 1.20, balcao: 1.50 },
+    offset_180g_A4_Color_FV: { novo_cliente: 1.15, cliente: 1.05, balcao: 1.35 },
+    offset_180g_SA3_PB_F:    { novo_cliente: 3.00, cliente: 2.70, balcao: 3.50 },
+    offset_180g_SA3_PB_FV:   { novo_cliente: 2.70, cliente: 2.40, balcao: 3.20 },
+    offset_180g_SA3_Color_F: { novo_cliente: 4.50, cliente: 4.00, balcao: 5.00 },
+    offset_180g_SA3_Color_FV:{ novo_cliente: 4.10, cliente: 3.70, balcao: 4.60 },
+
+    offset_210g_A5_PB_F:     { novo_cliente: 0.35, cliente: 0.30, balcao: 0.40 },
+    offset_210g_A5_PB_FV:    { novo_cliente: 0.30, cliente: 0.27, balcao: 0.35 },
+    offset_210g_A5_Color_F:  { novo_cliente: 0.85, cliente: 0.78, balcao: 1.00 },
+    offset_210g_A5_Color_FV: { novo_cliente: 0.75, cliente: 0.68, balcao: 0.90 },
+    offset_210g_A4_PB_F:     { novo_cliente: 0.60, cliente: 0.55, balcao: 0.70 },
+    offset_210g_A4_PB_FV:    { novo_cliente: 0.55, cliente: 0.50, balcao: 0.65 },
+    offset_210g_A4_Color_F:  { novo_cliente: 1.50, cliente: 1.35, balcao: 1.70 },
+    offset_210g_A4_Color_FV: { novo_cliente: 1.30, cliente: 1.20, balcao: 1.50 },
+    offset_210g_SA3_PB_F:    { novo_cliente: 3.50, cliente: 3.10, balcao: 4.00 },
+    offset_210g_SA3_PB_FV:   { novo_cliente: 3.10, cliente: 2.80, balcao: 3.60 },
+    offset_210g_SA3_Color_F: { novo_cliente: 5.00, cliente: 4.50, balcao: 5.80 },
+    offset_210g_SA3_Color_FV:{ novo_cliente: 4.50, cliente: 4.10, balcao: 5.20 },
+
+    offset_250g_A5_PB_F:     { novo_cliente: 0.40, cliente: 0.35, balcao: 0.48 },
+    offset_250g_A5_PB_FV:    { novo_cliente: 0.35, cliente: 0.31, balcao: 0.42 },
+    offset_250g_A5_Color_F:  { novo_cliente: 0.95, cliente: 0.88, balcao: 1.10 },
+    offset_250g_A5_Color_FV: { novo_cliente: 0.85, cliente: 0.78, balcao: 1.00 },
+    offset_250g_A4_PB_F:     { novo_cliente: 0.70, cliente: 0.62, balcao: 0.80 },
+    offset_250g_A4_PB_FV:    { novo_cliente: 0.62, cliente: 0.56, balcao: 0.72 },
+    offset_250g_A4_Color_F:  { novo_cliente: 1.70, cliente: 1.55, balcao: 1.95 },
+    offset_250g_A4_Color_FV: { novo_cliente: 1.50, cliente: 1.35, balcao: 1.75 },
+    offset_250g_SA3_PB_F:    { novo_cliente: 4.00, cliente: 3.60, balcao: 4.60 },
+    offset_250g_SA3_PB_FV:   { novo_cliente: 3.60, cliente: 3.20, balcao: 4.10 },
+    offset_250g_SA3_Color_F: { novo_cliente: 5.80, cliente: 5.20, balcao: 6.50 },
+    offset_250g_SA3_Color_FV:{ novo_cliente: 5.20, cliente: 4.70, balcao: 5.90 },
 
     couche_a5_115g_F:       { novo_cliente: 0.90, cliente: 0.70, balcao: 1.10 },
     couche_a5_115g_FV:      { novo_cliente: 1.30, cliente: 1.00, balcao: 1.50 },
@@ -1623,6 +1769,7 @@
     if (event) event.currentTarget.classList.add('active');
 
     document.getElementById('box-sulfite').classList.add('hidden');
+    document.getElementById('box-offset').classList.add('hidden');
     document.getElementById('box-cartoes').classList.add('hidden');
     document.getElementById('box-cartoes-premium').classList.add('hidden');
     document.getElementById('box-placas').classList.add('hidden');
@@ -1642,6 +1789,12 @@
 
     if (cat === 'sulfite') {
       document.getElementById('box-sulfite').classList.remove('hidden');
+      boxFace.classList.remove('hidden');
+      boxApostila.classList.remove('hidden');
+      boxLaminacao.classList.remove('hidden');
+      lblQtd.innerText = document.getElementById('chk_apostila').checked ? "Quantidade de Exemplares:" : "Quantidade Total:";
+    } else if (cat === 'offset') {
+      document.getElementById('box-offset').classList.remove('hidden');
       boxFace.classList.remove('hidden');
       boxApostila.classList.remove('hidden');
       boxLaminacao.classList.remove('hidden');
@@ -1873,7 +2026,7 @@
   function capturarDadosDoItem() {
     const qtd = parseFloat(document.getElementById('qtd_itens').value) || 1;
     const face = document.getElementById('impressao_face').value;
-    const ehApostila = (categoriaAtual === 'sulfite' || categoriaAtual.startsWith('couche')) && document.getElementById('chk_apostila').checked;
+    const ehApostila = (categoriaAtual === 'sulfite' || categoriaAtual === 'offset' || categoriaAtual.startsWith('couche')) && document.getElementById('chk_apostila').checked;
     const paginas = parseFloat(document.getElementById('apostila_paginas').value) || 1;
     const encadernado = document.getElementById('chk_encadernacao').checked;
     const tipoEncadernacao = document.getElementById('sel_tipo_encadernacao').value;
@@ -1896,6 +2049,9 @@
       valorLaminacao: valorLaminacao,
       sulfite_formato: document.getElementById('sulfite_formato').value,
       sulfite_cor: document.getElementById('sulfite_cor').value,
+      offset_gram: document.getElementById('offset_gram').value,
+      offset_tamanho: document.getElementById('offset_tamanho').value,
+      offset_cor: document.getElementById('offset_cor').value,
       cartoes_opcao: document.getElementById('cartoes_opcao').value,
       cartoes_premium_opcao: document.getElementById('cartoes_premium_opcao').value,
       placas_opcao: document.getElementById('placas_opcao').value,
@@ -1927,6 +2083,16 @@
     if (item.categoria === 'sulfite') {
       chavePreco = `sulfite_${item.sulfite_formato}_${item.sulfite_cor}_${item.face}`;
       descMaterial = `Sulfite ${item.sulfite_formato} (${item.sulfite_cor === 'PB' ? 'Preto e Branco' : 'Colorido'}, ${faceTxt})`;
+      precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
+
+      if (item.ehLaminado) {
+        precoUnitario += (item.valorLaminacao * multiplicadorLados);
+        descMaterial += ` + Laminação`;
+      }
+
+    } else if (item.categoria === 'offset') {
+      chavePreco = `offset_${item.offset_gram}_${item.offset_tamanho}_${item.offset_cor}_${item.face}`;
+      descMaterial = `OffSet ${item.offset_gram} ${item.offset_tamanho} (${item.offset_cor === 'PB' ? 'Preto e Branco' : 'Colorido'}, ${faceTxt})`;
       precoUnitario = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
 
       if (item.ehLaminado) {
@@ -2093,6 +2259,9 @@
           if (item.categoria === 'sulfite') {
             let chaveA4 = `sulfite_A4_${item.sulfite_cor}_F`;
             precoFolhaCalculo = TABELA_PRECOS[chaveA4]?.[perfilAtual] || precoUnitario;
+          } else if (item.categoria === 'offset') {
+            let chaveOffA4 = `offset_${item.offset_gram}_A4_${item.offset_cor}_F`;
+            precoFolhaCalculo = TABELA_PRECOS[chaveOffA4]?.[perfilAtual] || precoUnitario;
           } else if (item.categoria.startsWith('couche')) {
             let gram = item.couche_a4_gram || item.couche_a5_gram || item.couche_a3_gram || '115g';
             let chaveA4 = `couche_a4_${gram}_F`;
@@ -2103,6 +2272,9 @@
           if (item.categoria === 'sulfite') {
             let chaveA3 = `sulfite_A3_${item.sulfite_cor}_F`;
             precoFolhaCalculo = TABELA_PRECOS[chaveA3]?.[perfilAtual] || precoUnitario;
+          } else if (item.categoria === 'offset') {
+            let chaveOffSA3 = `offset_${item.offset_gram}_SA3_${item.offset_cor}_F`;
+            precoFolhaCalculo = TABELA_PRECOS[chaveOffSA3]?.[perfilAtual] || precoUnitario;
           } else if (item.categoria.startsWith('couche')) {
             let gram = item.couche_a3_gram || item.couche_a4_gram || item.couche_a5_gram || '115g';
             let chaveA3 = `couche_a3_${gram}_F`;
@@ -2246,6 +2418,10 @@
     if (it.categoria === 'sulfite') {
       document.getElementById('sulfite_formato').value = it.sulfite_formato;
       document.getElementById('sulfite_cor').value = it.sulfite_cor;
+    } else if (it.categoria === 'offset') {
+      document.getElementById('offset_gram').value = it.offset_gram;
+      document.getElementById('offset_tamanho').value = it.offset_tamanho;
+      document.getElementById('offset_cor').value = it.offset_cor;
     } else if (it.categoria === 'cartoes') {
       document.getElementById('cartoes_opcao').value = it.cartoes_opcao;
     } else if (it.categoria === 'cartoes_premium') {
