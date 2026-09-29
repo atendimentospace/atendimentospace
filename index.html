@@ -2230,6 +2230,12 @@
       const precoM2 = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
       precoUnitario = areaM2 * precoM2;
 
+      // ---- INÍCIO DO CÓDIGO DA TRAVA DE VALOR MÍNIMO ----
+      if ((item.m2_tipo === 'adesivo_vinil' || item.m2_tipo === 'banner') && precoUnitario < 35.00) {
+        precoUnitario = 35.00;
+      }
+      // ---- FIM DO CÓDIGO DA TRAVA DE VALOR MÍNIMO ----
+
       let nomesM2 = {
         adesivo_vinil: "Adesivo Vinil",
         banner: "Banner",
