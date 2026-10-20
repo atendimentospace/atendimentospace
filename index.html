@@ -1666,6 +1666,10 @@
       if (lista.length > 0) {
         localStorage.setItem('impact_haus_historico', JSON.stringify(lista));
         let maxNum = Math.max(...lista.map(o => o.numRaw || 0));
+        // Garante que o contador nunca fique abaixo de 1000
+        if (maxNum < 1000) {
+          maxNum = 1000;
+        }
         localStorage.setItem('impact_haus_seq_num', maxNum.toString());
         if (!orcamentoAtualId && !localStorage.getItem('impact_haus_rascunho_orcamento')) {
           numeroOrcamentoAtual = formatarNumeroOrcamento(maxNum + 1);
@@ -1691,10 +1695,14 @@
     });
   }
 
-  function getProximoNumero() {
-    let ultimoNum = parseInt(localStorage.getItem('impact_haus_seq_num') || "0", 10);
-    return ultimoNum + 1;
+function getProximoNumero() {
+  let ultimoNum = parseInt(localStorage.getItem('impact_haus_seq_num') || "1000", 10);
+  // Se o último número for menor que 1000, pula direto para 1001
+  if (ultimoNum < 1000) {
+    ultimoNum = 1000;
   }
+  return ultimoNum + 1;
+}
 
   function formatarNumeroOrcamento(num) {
     return String(num).padStart(3, '0');
