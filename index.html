@@ -713,6 +713,7 @@
                 <option value="wireo">Wire-o</option>
                 <option value="brochura">Brochura</option>
                 <option value="capadura">Capa Dura</option>
+                <option value="capadura_hotstamping">Capa Dura Hotstamping</option>
               </select>
             </div>
           </div>
@@ -1381,6 +1382,7 @@
     { key: "encadernacao_wireo", desc: "Encadernação: Wire-o (un)" },
     { key: "encadernacao_brochura", desc: "Encadernação: Brochura (un)" },
     { key: "encadernacao_capadura", desc: "Encadernação: Capa Dura (un)" }
+    { key: "encadernacao_capadura_hotstamping", desc: "Encadernação: Capa Dura Hotstamping (un)" }
   ];
 
   const PRECOS_PADRAO = {
@@ -1485,6 +1487,7 @@
     encadernacao_wireo:     { novo_cliente: 30.00, cliente: 30.00, balcao: 30.00 },
     encadernacao_brochura:  { novo_cliente: 30.00, cliente: 25.00, balcao: 30.00 },
     encadernacao_capadura:  { novo_cliente: 75.00, cliente: 70.00, balcao: 75.00 }
+    encadernacao_capadura_hotstamping: { novo_cliente: 95.00, cliente: 90.00, balcao: 95.00 }
   };
 
   let TABELA_PRECOS = carregarPrecos();
@@ -2306,7 +2309,7 @@ function getProximoNumero() {
       let nomeEncadernacao = "";
 
       if (item.encadernado) {
-        const nomesEnc = { espiral: "Espiral", wireo: "Wire-o", brochura: "Brochura", capadura: "Capa Dura" };
+        const nomesEnc = { espiral: "Espiral", wireo: "Wire-o", brochura: "Brochura", capadura: "Capa Dura", capadura_hotstamping: "Capa Dura Hotstamping" };
         const chaveEnc = `encadernacao_${item.tipoEncadernacao}`;
         custoEncadernacao = TABELA_PRECOS[chaveEnc]?.[perfilAtual] || 0;
         nomeEncadernacao = ` + Encadernação ${nomesEnc[item.tipoEncadernacao] || ''}`;
