@@ -1381,7 +1381,7 @@
     { key: "encadernacao_espiral", desc: "Encadernação: Espiral (un)" },
     { key: "encadernacao_wireo", desc: "Encadernação: Wire-o (un)" },
     { key: "encadernacao_brochura", desc: "Encadernação: Brochura (un)" },
-    { key: "encadernacao_capadura", desc: "Encadernação: Capa Dura (un)" }
+    { key: "encadernacao_capadura", desc: "Encadernação: Capa Dura (un)" },
     { key: "encadernacao_capadura_hotstamping", desc: "Encadernação: Capa Dura Hotstamping (un)" }
   ];
 
@@ -1483,10 +1483,10 @@
     m2_placa_pvc:           { novo_cliente: 150.00, cliente: 140.00, balcao: 160.00 },
     m2_papel_fotografico:   { novo_cliente: 95.00, cliente: 85.00, balcao: 110.00 },
 
-    encadernacao_espiral:   { novo_cliente: 5.00,  cliente: 5.00,  balcao: 5.00 },
-    encadernacao_wireo:     { novo_cliente: 30.00, cliente: 30.00, balcao: 30.00 },
-    encadernacao_brochura:  { novo_cliente: 30.00, cliente: 25.00, balcao: 30.00 },
-    encadernacao_capadura:  { novo_cliente: 75.00, cliente: 70.00, balcao: 75.00 }
+    encadernacao_espiral:              { novo_cliente: 5.00,  cliente: 5.00,  balcao: 5.00 },
+    encadernacao_wireo:                { novo_cliente: 30.00, cliente: 30.00, balcao: 30.00 },
+    encadernacao_brochura:             { novo_cliente: 30.00, cliente: 25.00, balcao: 30.00 },
+    encadernacao_capadura:             { novo_cliente: 75.00, cliente: 70.00, balcao: 75.00 },
     encadernacao_capadura_hotstamping: { novo_cliente: 95.00, cliente: 90.00, balcao: 95.00 }
   };
 
@@ -1669,7 +1669,6 @@
       if (lista.length > 0) {
         localStorage.setItem('impact_haus_historico', JSON.stringify(lista));
         let maxNum = Math.max(...lista.map(o => o.numRaw || 0));
-        // Garante que o contador nunca fique abaixo de 1000
         if (maxNum < 1000) {
           maxNum = 1000;
         }
@@ -1698,14 +1697,13 @@
     });
   }
 
-function getProximoNumero() {
-  let ultimoNum = parseInt(localStorage.getItem('impact_haus_seq_num') || "1000", 10);
-  // Se o último número for menor que 1000, pula direto para 1001
-  if (ultimoNum < 1000) {
-    ultimoNum = 1000;
+  function getProximoNumero() {
+    let ultimoNum = parseInt(localStorage.getItem('impact_haus_seq_num') || "1000", 10);
+    if (ultimoNum < 1000) {
+      ultimoNum = 1000;
+    }
+    return ultimoNum + 1;
   }
-  return ultimoNum + 1;
-}
 
   function formatarNumeroOrcamento(num) {
     return String(num).padStart(3, '0');
@@ -2241,11 +2239,9 @@ function getProximoNumero() {
       const precoM2 = TABELA_PRECOS[chavePreco]?.[perfilAtual] || 0;
       precoUnitario = areaM2 * precoM2;
 
-      // ---- INÍCIO DO CÓDIGO DA TRAVA DE VALOR MÍNIMO ----
       if ((item.m2_tipo === 'adesivo_vinil' || item.m2_tipo === 'banner') && precoUnitario < 35.00) {
         precoUnitario = 35.00;
       }
-      // ---- FIM DO CÓDIGO DA TRAVA DE VALOR MÍNIMO ----
 
       let nomesM2 = {
         adesivo_vinil: "Adesivo Vinil",
@@ -2309,7 +2305,13 @@ function getProximoNumero() {
       let nomeEncadernacao = "";
 
       if (item.encadernado) {
-        const nomesEnc = { espiral: "Espiral", wireo: "Wire-o", brochura: "Brochura", capadura: "Capa Dura", capadura_hotstamping: "Capa Dura Hotstamping" };
+        const nomesEnc = {
+          espiral: "Espiral",
+          wireo: "Wire-o",
+          brochura: "Brochura",
+          capadura: "Capa Dura",
+          capadura_hotstamping: "Capa Dura Hotstamping"
+        };
         const chaveEnc = `encadernacao_${item.tipoEncadernacao}`;
         custoEncadernacao = TABELA_PRECOS[chaveEnc]?.[perfilAtual] || 0;
         nomeEncadernacao = ` + Encadernação ${nomesEnc[item.tipoEncadernacao] || ''}`;
