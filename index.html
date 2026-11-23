@@ -1163,6 +1163,7 @@
 
   let usuarioAtualEmail = "";
   let ehAdmin = false;
+  let sessaoInicializada = false;
 
   let auth = null;
   let db = null;
@@ -1207,7 +1208,27 @@
     }
 
     auth.signInWithEmailAndPassword(email, senha)
-      .then(() => {})
+      .then((cred) => {
+        if (!cred || !cred.user || !EMAILS_PERMITIDOS.includes((cred.user.email || '').toLowerCase())) {
+          btn.innerText = "Entrar no Sistema";
+          btn.disabled = false;
+          feedback.style.display = 'block';
+          feedback.innerText = "Acesso negado: Este e-mail não tem permissão no sistema.";
+          return auth.signOut();
+        }
+        usuarioAtualEmail = cred.user.email.toLowerCase();
+        ehAdmin = (usuarioAtualEmail === "atendimentospacespeed@gmail.com");
+        document.getElementById('tela-login').classList.add('hidden');
+        document.getElementById('app-container').classList.remove('hidden');
+        aplicarPermissoesInterface();
+        if (!sessaoInicializada) {
+          sessaoInicializada = true;
+          sincronizarComFirebase();
+          restaurarRascunhoFormulario();
+        }
+        btn.innerText = "Entrar no Sistema";
+        btn.disabled = false;
+      })
       .catch((error) => {
         btn.innerText = "Entrar no Sistema";
         btn.disabled = false;
@@ -1253,7 +1274,7 @@
 
   if (auth) {
     auth.onAuthStateChanged((user) => {
-      if (user && EMAILS_PERMITIDOS.includes(user.email.toLowerCase())) {
+      if (user && user.email && EMAILS_PERMITIDOS.includes(user.email.toLowerCase())) {
         usuarioAtualEmail = user.email.toLowerCase();
         ehAdmin = (usuarioAtualEmail === "atendimentospacespeed@gmail.com");
 
@@ -1261,9 +1282,13 @@
         document.getElementById('app-container').classList.remove('hidden');
         
         aplicarPermissoesInterface();
-        sincronizarComFirebase();
-        restaurarRascunhoFormulario();
+        if (!sessaoInicializada) {
+          sessaoInicializada = true;
+          sincronizarComFirebase();
+          restaurarRascunhoFormulario();
+        }
       } else {
+        sessaoInicializada = false;
         document.getElementById('tela-login').classList.remove('hidden');
         document.getElementById('app-container').classList.add('hidden');
       }
@@ -1604,4 +1629,58 @@
       const data = JSON.parse(salvo);
       if (!data) return;
 
-      if (data.cli
+      if (data.cli_nome) document.getElementById('cli_nome').value = data.cli_nome;
+      if (data.cli_tel) {
+        document.getElementById('cli_tel').value = data.cli_tel;
+        verificarTelefoneCliente();
+      }
+      if (data.orc_observacao) document.getElementById('orc_observacao').value = data.orc_observacao;
+      if (data.perfilAtual) {
+        perfilAtual = data.perfilAtual;
+        document.querySelectorAll('#group-cliente .btn-toggle').forEach(b => b.classList.remove('active'));
+        if (perfilAtual === 'novo_cliente') document.getElementById('btn_perfil_novo').classList.add('active');
+        if (perfilAtual === 'cliente') document.getElementById('btn_perfil_frequente').classList.add('active');
+        if (perfilAtual === 'balcao') document.getElementById('btn_perfil_balcao').classList.add('active');
+      }
+      if (data.formaPagamentoAtual) {
+        formaPagamentoAtual = data.formaPagamentoAtual;
+        document.querySelectorAll('#group-pagamento .btn-toggle').forEach(b => b.classList.remove('active'));
+        if (formaPagamentoAtual === 'adiantado') document.querySelectorAll('#group-pagamento .btn-toggle')[0].classList.add('active');
+        if (formaPagamentoAtual === 'na_hora') document.querySelectorAll('#group-pagamento .btn-toggle')[1].classList.add('active');
+        if (formaPagamentoAtual === 'boleto') {
+          document.querySelectorAll('#group-pagamento .btn-toggle')[2].classList.add('active');
+          document.getElementById('box-campos-boleto').classList.remove('hidden');
+        }
+      }
+      if (data.boleto_vencimento) document.getElementById('boleto_vencimento').value = data.boleto_vencimento;
+      if (data.boleto_status) document.getElementById('boleto_status').value = data.boleto_status;
+      if (typeof data.descontoAtual === 'number') {
+        descontoAtual = data.descontoAtual;
+        document.querySelectorAll('#group-desconto .btn-toggle').forEach(b => b.classList.remove('active'));
+        if (descontoAtual === 0) document.querySelectorAll('#group-desconto .btn-toggle')[0].classList.add('active');
+        if (descontoAtual === 5) document.querySelectorAll('#group-desconto .btn-toggle')[1].classList.add('active');
+        if (descontoAtual === 10) document.querySelectorAll('#group-desconto .btn-toggle')[2].classList.add('active');
+      }
+      if (Array.isArray(data.itensNoOrcamento)) {
+        itensNoOrcamento = data.itensNoOrcamento;
+        renderizarTabelaCarrinho();
+      }
+      if (data.orcamentoAtualId) orcamentoAtualId = data.orcamentoAtualId;
+      if (data.numeroOrcamentoAtual) {
+        numeroOrcamentoAtual = data.numeroOrcamentoAtual;
+        atualizarTagOrcamento();
+      }
+      if (data.linkAnexoSalvo) {
+        document.getElementById('link_anexo_drive_salvo').value = data.linkAnexoSalvo;
+        const statusDiv = document.getElementById('status_upload_anexo');
+        statusDiv.style.color = '#15803d';
+        statusDiv.innerHTML = `✅ Arquivo vinculado ao rascunho: <a href="${data.linkAnexoSalvo}" target="_blank" style="color:#0284c7;">Abrir no Drive</a>`;
+      }
+      atualizarResumo();
+    } catch(e) {
+      console.error("Erro ao restaurar rascunho:", e);
+    }
+  }
+</script>
+</body>
+</html>
